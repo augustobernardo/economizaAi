@@ -14,8 +14,11 @@ permissions:
 jobs:
   analyze:
     name: Análise CodeQL
+    # Code scanning em repo privado exige GitHub Code Security (pago); roda quando o repo for público.
+    if: ${{ !github.event.repository.private }}
     runs-on: ubuntu-latest
     permissions:
+      actions: read
       contents: read
       security-events: write
     steps:
