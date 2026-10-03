@@ -129,17 +129,15 @@ Nomes de modelos de IA ficam no `.env` — mudam com frequência no free tier.
 
 ## Status
 
-| Etapa | Situação |
-|---|---|
 O código do primeiro protótipo foi perdido numa formatação. O projeto
-recomeça do zero; os documentos e agentes deste repositório foram preservados.
+recomeçou do zero em 2026-10-03.
 
 | Etapa | Situação |
 |---|---|
-| 0 — Passo 0 e scaffold do zero | 🔧 próxima |
-| 1 — Ferramental e configuração | ⏳ |
-| 2 — Domínio (TDD) | ⏳ |
-| 3 — Persistência | ⏳ |
+| 0 — Passo 0 e scaffold do zero | ✅ (pg_isready pendente: sessão sem acesso ao Docker) |
+| 1 — Ferramental e configuração | ✅ (CI ainda não rodou: sem remoto) |
+| 2 — Domínio (TDD) | ✅ |
+| 3 — Persistência | 🔧 próxima |
 | 4 — Caso de uso RegistrarGastos | ⏳ |
 | 5 — Adapter Gemini | ⏳ |
 | 6 — Adapter Groq + Fallback | ⏸️ adiada (só Gemini por enquanto) |
