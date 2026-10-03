@@ -1,0 +1,10 @@
+GITLEAKS_BIN="$HOME/.local/bin/gitleaks"
+
+if [ ! -x "$GITLEAKS_BIN" ]; then
+  echo "Bloqueado: gitleaks não encontrado em $GITLEAKS_BIN." >&2
+  echo "Instale: veja a seção 'gitleaks' do README.md ou devops.md (.claude/agents)." >&2
+  exit 1
+fi
+
+"$GITLEAKS_BIN" git --pre-commit --staged --redact --verbose
+pnpm exec lint-staged
