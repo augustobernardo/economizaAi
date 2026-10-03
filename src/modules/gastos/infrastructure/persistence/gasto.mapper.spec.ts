@@ -1,0 +1,17 @@
+import { describe, expect, it } from 'vitest';
+import { umGasto } from '../../../../../test/builders/gasto.builder.js';
+import { paraDominio, paraPersistencia } from './gasto.mapper.js';
+
+describe('gasto.mapper', () => {
+  it('preserva os 8 campos na ida e volta', () => {
+    const gasto = umGasto().build();
+    const volta = paraDominio(paraPersistencia(gasto));
+    expect(volta).toEqual(gasto);
+    expect(volta.valor.centavos).toBe(gasto.valor.centavos);
+  });
+
+  it('gera valorCentavos inteiro', () => {
+    const linha = paraPersistencia(umGasto().comValor(50).build());
+    expect(linha.valorCentavos).toBe(5000);
+  });
+});
