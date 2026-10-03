@@ -94,6 +94,11 @@ modules/gastos/
 5. **Conventional commits** em português, pequenos e incrementais.
 6. Nunca quebrar comportamento existente; nunca commitar `.env` nem logar segredos.
 7. Atualizar a seção "Status" abaixo ao concluir cada etapa.
+8. **Dúvidas antes de agir:** usar a skill `brainstorming` para tirar **todas**
+   as dúvidas com o dono antes de planejar ou implementar.
+9. **Subagente especialista por tarefa:** cada tarefa vai ao subagente da sua
+   área (tabela "Agentes"). Tarefas independentes rodam **em paralelo** com a
+   skill `superpowers:dispatching-parallel-agents`, cada uma no seu worktree.
 
 O autor prefere explicações do raciocínio por trás das decisões e quer que
 riscos e pontos fracos sejam apontados antes de validar uma ideia.
