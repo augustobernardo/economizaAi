@@ -128,8 +128,8 @@ recomeçou do zero em 2026-10-03.
 
 | Etapa | Situação |
 |---|---|
-| 0 — Passo 0 e scaffold do zero | ✅ (pg_isready pendente: sessão sem acesso ao Docker) |
-| 1 — Ferramental e configuração | ✅ (CI ainda não rodou: sem remoto) |
+| 0 — Passo 0 e scaffold do zero | ✅ |
+| 1 — Ferramental e configuração | ✅ |
 | 2 — Domínio (TDD) | ✅ |
 | 3 — Persistência | 🔧 próxima |
 | 4 — Caso de uso RegistrarGastos | ⏳ |
