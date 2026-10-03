@@ -24,9 +24,6 @@ export function instrucaoDeSistema(dataReferencia: Date): string {
 }
 
 export function mensagemDoUsuario(texto: string): string {
-  const neutralizado = texto.replace(
-    /<(\/?\s*mensagem\s*)>/gi,
-    (_trecho, interno: string) => `‹${interno}›`,
-  );
+  const neutralizado = texto.replace(/<(\s*\/?\s*mensagem\s*)>/gi, '‹$1›');
   return `<mensagem>\n${neutralizado}\n</mensagem>`;
 }

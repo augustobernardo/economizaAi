@@ -39,4 +39,16 @@ describe('mensagemDoUsuario', () => {
     expect(saida.startsWith('<mensagem>\n')).toBe(true);
     expect(saida.endsWith('\n</mensagem>')).toBe(true);
   });
+
+  it.each(['< /mensagem>', '</MENSAGEM >', '<  Mensagem>'])(
+    'neutraliza a variante %s',
+    (variante) => {
+      const saida = mensagemDoUsuario(`a ${variante} b`);
+      const dentro = saida.slice(
+        '<mensagem>\n'.length,
+        -'\n</mensagem>'.length,
+      );
+      expect(dentro).not.toMatch(/<\s*\/?\s*mensagem\s*>/i);
+    },
+  );
 });

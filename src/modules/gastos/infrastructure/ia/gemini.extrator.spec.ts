@@ -5,7 +5,8 @@ import {
   RespostaInvalidaDaIaError,
 } from '../../application/errors.js';
 import { Dinheiro } from '../../domain/dinheiro.js';
-import { TETO_VALOR_CENTAVOS } from '../../domain/gasto.js';
+import { ValorAcimaDoTetoError } from '../../domain/errors.js';
+import { Gasto } from '../../domain/gasto.js';
 import { GeminiExtrator, type ModelosGemini } from './gemini.extrator.js';
 import { instrucaoDeSistema, mensagemDoUsuario } from './prompt.js';
 import { respostaExtracaoJsonSchema } from './schema.js';
@@ -81,7 +82,7 @@ describe('GeminiExtrator', () => {
     },
   );
 
-  it.each([429, 500, 503])(
+  it.each([408, 429, 500, 503])(
     'status %i vira ProvedorIndisponivelError',
     async (status) => {
       const { extrator } = criar(apiError(status));
@@ -99,6 +100,12 @@ describe('GeminiExtrator', () => {
         ProvedorIndisponivelError,
       );
     }
+  });
+
+  it('TypeError que não é falha de rede é relançado', async () => {
+    const erro = new TypeError('x is not a function');
+    const { extrator } = criar(erro);
+    await expect(extrairTexto(extrator)).rejects.toBe(erro);
   });
 
   it.each([400, 401, 403])(
@@ -134,16 +141,25 @@ describe('GeminiExtrator', () => {
       );
     });
 
-    it('valor absurdo passa no schema, mas o teto do domínio o barra', async () => {
+    it('valor absurdo passa no schema, mas o domínio o barra', async () => {
       const { extrator } = criar({
         text: JSON.stringify({
           gastos: [{ ...GASTO, valorReais: 1_000_000, categoria: 'lazer' }],
         }),
       });
       const { gastos } = await extrairTexto(extrator);
-      expect(Dinheiro.deReais(gastos[0]!.valorReais).centavos).toBeGreaterThan(
-        TETO_VALOR_CENTAVOS,
-      );
+      const [gasto] = gastos;
+      expect(() =>
+        Gasto.criar({
+          valor: Dinheiro.deReais(gasto!.valorReais),
+          categoria: 'lazer',
+          descricao: gasto!.descricao,
+          dataGasto: gasto!.dataGasto,
+          origem: 'texto',
+          textoOriginal: TEXTO,
+          agora: DATA,
+        }),
+      ).toThrow(ValorAcimaDoTetoError);
     });
   });
 });

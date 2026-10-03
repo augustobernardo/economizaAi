@@ -78,11 +78,12 @@ function interpretar(texto: string) {
   return resultado.data;
 }
 
-/** 429/5xx, timeout (AbortError) e falha de rede são transitórios; o resto é bug nosso e sobe como está. */
+/** 408/429/5xx, timeout (AbortError) e falha de rede são transitórios; o resto é bug nosso e sobe como está. */
 function indisponivelOuOriginal(erro: unknown): unknown {
   const transitorio =
-    (erro instanceof ApiError && (erro.status === 429 || erro.status >= 500)) ||
-    erro instanceof TypeError ||
+    (erro instanceof ApiError &&
+      (erro.status === 408 || erro.status === 429 || erro.status >= 500)) ||
+    (erro instanceof TypeError && erro.message === 'fetch failed') ||
     (erro instanceof Error &&
       (erro.name === 'AbortError' || erro.name === 'TimeoutError'));
   return transitorio
