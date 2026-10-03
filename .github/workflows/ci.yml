@@ -53,6 +53,9 @@ jobs:
       - name: Testes unitários
         run: pnpm test
 
+      - name: Testes de integração (Postgres)
+        run: pnpm test:integration
+
       - name: Testes de integração (e2e)
         run: pnpm test:e2e
 
