@@ -84,12 +84,6 @@ modules/gastos/
 - Fuso de referência: `America/Sao_Paulo` (limites de mês incluídos).
 - Saída de LLM **sempre** validada pelo schema zod antes de virar domínio.
 
-## JEV
-
-O JEV (TypeSafe AI) **não faz parte do app**. É uma ferramenta de apoio ao
-agente (Claude) durante o desenvolvimento. Nada de JEV no código, no `.env`
-ou nas dependências.
-
 ## Fluxo de trabalho obrigatório
 
 1. **Passo 0:** investigar o estado atual antes de alterar qualquer coisa.
@@ -143,6 +137,6 @@ recomeçou do zero em 2026-10-03.
 | 6 — Adapter Groq + Fallback | ⏸️ adiada (só Gemini por enquanto) |
 | 7 — Telegram texto | ⏳ |
 | 8 — Telegram áudio | ⏳ |
-| 9 — ~~Camada de decisão com JEV~~ | ❌ removida (JEV é ferramenta do agente, não do app) |
+| 9 — (removida) | ❌ |
 | 10 — Exportação CSV/MD | ⏳ |
 | 11 — Docker + Easypanel | ⏳ (Postgres de produção já existe no Easypanel) |
