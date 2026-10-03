@@ -8,9 +8,6 @@ function envValido(sobrescrever: Partial<Record<string, unknown>> = {}) {
     TELEGRAM_OWNER_ID: '123456',
     GEMINI_API_KEY: 'gemini-fake-key',
     GEMINI_MODEL: 'gemini-2.5-flash',
-    GROQ_API_KEY: 'groq-fake-key',
-    GROQ_TRANSCRIPTION_MODEL: 'whisper-large-v3',
-    GROQ_TEXT_MODEL: 'llama-3.3-70b-versatile',
     ...sobrescrever,
   };
 }

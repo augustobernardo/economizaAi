@@ -22,9 +22,6 @@ export default defineConfig({
       TELEGRAM_OWNER_ID: '1',
       GEMINI_API_KEY: 'gemini-fake-e2e',
       GEMINI_MODEL: 'gemini-fake-model',
-      GROQ_API_KEY: 'groq-fake-e2e',
-      GROQ_TRANSCRIPTION_MODEL: 'groq-fake-transcription-model',
-      GROQ_TEXT_MODEL: 'groq-fake-text-model',
     },
   },
 });

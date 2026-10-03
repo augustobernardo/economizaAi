@@ -11,9 +11,6 @@ export const envSchema = z.object({
   TELEGRAM_OWNER_ID: z.coerce.number().int().positive(),
   GEMINI_API_KEY: z.string().min(1),
   GEMINI_MODEL: z.string().min(1),
-  GROQ_API_KEY: z.string().min(1),
-  GROQ_TRANSCRIPTION_MODEL: z.string().min(1),
-  GROQ_TEXT_MODEL: z.string().min(1),
 });
 
 export type Env = z.infer<typeof envSchema>;

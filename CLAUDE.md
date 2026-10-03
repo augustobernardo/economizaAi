@@ -49,7 +49,7 @@ importam tanto quanto a funcionalidade.
 - TypeORM + Postgres **17**, **migrations** (nunca `synchronize`)
 - Telegraf em **long polling** (a VPS não tem domínio — webhook não é opção)
 - IA para **extrair**: **Gemini** (principal; entende áudio nativamente,
-  structured output) com fallback para **Groq** (Whisper + LLM de texto).
+  structured output). Fallback para **Groq** (Whisper + LLM) adiado: por ora só Gemini.
   Hermes foi avaliado e descartado (sem áudio, free tier menor).
 - Validação: **zod** (env e respostas de IA) e class-validator (DTOs HTTP)
 - Testes: Vitest (padrão do Nest 12); Postgres real para testes de integração
@@ -142,7 +142,7 @@ recomeça do zero; os documentos e agentes deste repositório foram preservados.
 | 3 — Persistência | ⏳ |
 | 4 — Caso de uso RegistrarGastos | ⏳ |
 | 5 — Adapter Gemini | ⏳ |
-| 6 — Adapter Groq + Fallback | ⏳ |
+| 6 — Adapter Groq + Fallback | ⏸️ adiada (só Gemini por enquanto) |
 | 7 — Telegram texto | ⏳ |
 | 8 — Telegram áudio | ⏳ |
 | 9 — ~~Camada de decisão com JEV~~ | ❌ removida (JEV é ferramenta do agente, não do app) |
