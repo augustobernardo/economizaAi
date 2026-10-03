@@ -72,6 +72,25 @@ export function testarContratoGastoRepository(
       ]);
     });
 
+    it('desempata a mesma dataGasto por criadoEm crescente', async () => {
+      const cedo = umGasto()
+        .comData('2026-06-10')
+        .em(new Date('2026-06-10T10:00:00Z'))
+        .build();
+      const tarde = umGasto()
+        .comData('2026-06-10')
+        .em(new Date('2026-06-10T15:00:00Z'))
+        .build();
+      await repositorio.salvarVarios([tarde, cedo]);
+
+      const lista = await repositorio.listarPorPeriodo(
+        '2026-06-01',
+        '2026-07-01',
+      );
+
+      expect(lista.map((g) => g.id)).toEqual([cedo.id, tarde.id]);
+    });
+
     it('período vazio quando início igual ao fim', async () => {
       await repositorio.salvarVarios([umGasto().comData('2026-06-10').build()]);
 
