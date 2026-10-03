@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { umGasto } from '../../../../../test/builders/gasto.builder.js';
 import { InMemoryGastoRepository } from '../../../../../test/fakes/in-memory-gasto.repository.js';
 import { DesfazerRegistroUseCase } from './desfazer-registro.use-case.js';
@@ -21,13 +21,10 @@ describe('DesfazerRegistroUseCase', () => {
 
   it('lista vazia não chama o repositório', async () => {
     const repositorio = new InMemoryGastoRepository();
-    let chamadas = 0;
-    repositorio.removerPorIds = async () => {
-      chamadas++;
-    };
+    const spy = vi.spyOn(repositorio, 'removerPorIds');
 
     await new DesfazerRegistroUseCase(repositorio).executar([]);
 
-    expect(chamadas).toBe(0);
+    expect(spy).not.toHaveBeenCalled();
   });
 });

@@ -132,7 +132,7 @@ describe('RegistrarGastosUseCase', () => {
 
     await useCase.executar(ENTRADA);
 
-    expect(extrator.chamadas[0]?.dataReferencia).toBe(AGORA);
+    expect(extrator.chamadas[0]?.dataReferencia).toEqual(AGORA);
   });
 
   it('devolve textoOriginal do extrator', async () => {
