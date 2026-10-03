@@ -1,6 +1,6 @@
 ---
 name: integrador-infra
-description: Implementa infrastructure/ e presentation/ do EconomizaAI - TypeORM e migrations, adapters Gemini/Groq/Fallback, decisor JEV, Telegraf, exportadores CSV/Markdown, configuração e endpoints de dev.
+description: Implementa infrastructure/ e presentation/ do EconomizaAI - TypeORM e migrations, adapters Gemini/Groq/Fallback, Telegraf, exportadores CSV/Markdown, configuração e endpoints de dev.
 tools: Read, Glob, Grep, Edit, Write, Bash, WebFetch, WebSearch
 model: sonnet
 color: blue
@@ -43,15 +43,7 @@ aceite, não sugestão.
 
 ## Pesquisa
 Use WebFetch/WebSearch para confirmar a API atual de SDKs (`@google/genai`,
-`groq-sdk`, Telegraf, TypeORM), a rota de acesso ao JEV (endpoint,
-autenticação, formato de `state`/`questions` e de `answers`) e nomes de
-modelos vigentes. Não invente assinaturas de métodos de memória.
-
-## JEV (Etapa 9)
-Siga a seção "Decisões com JEV" do `CLAUDE.md`: LLM extrai, JEV decide,
-código valida. Todas as perguntas de uma mensagem vão numa única chamada.
-Confiança só é interpretada pela `PoliticaDeConfianca`. Falha do JEV degrada
-para o `NullDecisor`.
+`groq-sdk`, Telegraf, TypeORM) e nomes de modelos vigentes. Não invente assinaturas de métodos de memória.
 
 ## Proibições
 Não leia `.env`. Não adicione dependências sem justificar no relatório

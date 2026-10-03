@@ -51,8 +51,6 @@ importam tanto quanto a funcionalidade.
 - IA para **extrair**: **Gemini** (principal; entende áudio nativamente,
   structured output) com fallback para **Groq** (Whisper + LLM de texto).
   Hermes foi avaliado e descartado (sem áudio, free tier menor).
-- IA para **decidir**: **JEV** (TypeSafe AI), atrás da flag `JEV_ATIVO`.
-  Devolve decisões tipadas com confiança calibrada; ver "Decisões com JEV".
 - Validação: **zod** (env e respostas de IA) e class-validator (DTOs HTTP)
 - Testes: Vitest (padrão do Nest 12); Postgres real para testes de integração
 - Lint: oxlint type-aware; formatação: Prettier. Módulos: ESM (`"type": "module"`, imports com `.js`)
@@ -63,9 +61,8 @@ importam tanto quanto a funcionalidade.
 ```
 modules/gastos/
   domain/          TypeScript puro: Dinheiro, Categoria, Gasto, erros, port do repositório
-  application/     casos de uso + ports (ExtratorDeGastos, DecisorDeGastos, Exportador, Relogio)
-                   + PoliticaDeConfianca
-  infrastructure/  TypeORM, Gemini, Groq, Fallback, JEV/NullDecisor, CSV, Markdown
+  application/     casos de uso + ports (ExtratorDeGastos, Exportador, Relogio)
+  infrastructure/  TypeORM, Gemini, Groq, Fallback, CSV, Markdown
   presentation/    Telegram (handlers, owner guard) e HTTP de dev
   gastos.module.ts único lugar que liga ports a adapters
 ```
@@ -87,22 +84,11 @@ modules/gastos/
 - Fuso de referência: `America/Sao_Paulo` (limites de mês incluídos).
 - Saída de LLM **sempre** validada pelo schema zod antes de virar domínio.
 
-## Decisões com JEV
+## JEV
 
-Regra geral: **LLM extrai, JEV decide, código valida.**
-
-| Use o JEV para | Não use o JEV para |
-|---|---|
-| Escolher entre opções fechadas: triagem da mensagem, categoria | Valor e datas (falha em aritmética; lê datas como texto) |
-| Verificar se a extração é fiel ao texto (`noul`) | Somas, totais, limites de mês, exportação |
-| Sinalizar instruções embutidas na mensagem, como camada extra | Áudio (só aceita texto; use a transcrição) |
-| Decidir **se** agir, pela confiança: agir, confirmar ou recusar | Relaxar qualquer invariante do domínio |
-
-- A confiança passa pela `PoliticaDeConfianca` (limiares no `.env`).
-  Nenhum outro lugar do código compara confiança com números soltos.
-- Falha do JEV degrada para o `NullDecisor`; nunca bloqueia um registro.
-- Rota de acesso, endpoint e nome do modelo: confirmar na documentação oficial
-  ao implementar (o cadastro direto estava pausado em 22/09/2026).
+O JEV (TypeSafe AI) **não faz parte do app**. É uma ferramenta de apoio ao
+agente (Claude) durante o desenvolvimento. Nada de JEV no código, no `.env`
+ou nas dependências.
 
 ## Fluxo de trabalho obrigatório
 
@@ -159,6 +145,6 @@ recomeça do zero; os documentos e agentes deste repositório foram preservados.
 | 6 — Adapter Groq + Fallback | ⏳ |
 | 7 — Telegram texto | ⏳ |
 | 8 — Telegram áudio | ⏳ |
-| 9 — Camada de decisão com JEV | ⏳ |
+| 9 — ~~Camada de decisão com JEV~~ | ❌ removida (JEV é ferramenta do agente, não do app) |
 | 10 — Exportação CSV/MD | ⏳ |
 | 11 — Docker + Easypanel | ⏳ (Postgres de produção já existe no Easypanel) |
