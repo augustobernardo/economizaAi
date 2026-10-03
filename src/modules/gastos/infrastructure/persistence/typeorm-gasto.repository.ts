@@ -10,6 +10,7 @@ export class TypeOrmGastoRepository implements GastoRepository {
   constructor(@Inject(DataSource) private readonly dataSource: DataSource) {}
 
   async salvarVarios(gastos: Gasto[]): Promise<void> {
+    if (gastos.length === 0) return;
     const linhas = gastos.map(paraPersistencia);
     await this.dataSource.transaction((m) => m.insert(GastoOrmEntity, linhas));
   }

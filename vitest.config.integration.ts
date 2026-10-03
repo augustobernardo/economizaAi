@@ -1,5 +1,6 @@
 import { defineConfig } from 'vitest/config';
 import tsconfigPaths from 'vite-tsconfig-paths';
+import { URL_BANCO_DE_TESTE } from './test/setup/url-banco-de-teste.js';
 
 export default defineConfig({
   plugins: [tsconfigPaths()],
@@ -10,9 +11,7 @@ export default defineConfig({
     globalSetup: ['test/setup/migrar-banco-de-teste.ts'],
     fileParallelism: false,
     env: {
-      DATABASE_URL:
-        process.env.DATABASE_URL ??
-        'postgresql://economizaai_app:economizaai_app_dev@localhost:5432/economizaai_test',
+      DATABASE_URL: process.env.DATABASE_URL ?? URL_BANCO_DE_TESTE,
     },
   },
 });
