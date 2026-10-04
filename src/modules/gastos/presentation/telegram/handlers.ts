@@ -13,6 +13,7 @@ import {
   formatarRegistro,
   formatarRegistroDeAudio,
   formatarSemGastoNoAudio,
+  MENSAGEM_AUDIO_GRANDE,
   MENSAGEM_AUDIO_LONGO,
   MENSAGEM_NAO_SUPORTADO,
   MENSAGEM_TEXTO_LONGO,
@@ -118,8 +119,12 @@ export async function tratarVoz(
   deps: DepsTelegram,
 ): Promise<void> {
   const { duration, file_size } = ctx.msg.voice;
-  if (duration > MAX_DURACAO_AUDIO_S || (file_size ?? 0) > MAX_BYTES_AUDIO) {
+  if (duration > MAX_DURACAO_AUDIO_S) {
     await ctx.reply(MENSAGEM_AUDIO_LONGO);
+    return;
+  }
+  if ((file_size ?? 0) > MAX_BYTES_AUDIO) {
+    await ctx.reply(MENSAGEM_AUDIO_GRANDE);
     return;
   }
   try {
@@ -135,8 +140,12 @@ export async function tratarVoz(
       reply_markup: tecladoDesfazer(registroId),
     });
   } catch (erro) {
-    if (erro instanceof NenhumGastoEncontradoError && erro.textoOriginal) {
-      await ctx.reply(formatarSemGastoNoAudio(erro.textoOriginal));
+    const ouvido =
+      erro instanceof NenhumGastoEncontradoError
+        ? erro.textoOriginal?.trim()
+        : undefined;
+    if (ouvido) {
+      await ctx.reply(formatarSemGastoNoAudio(ouvido));
       return;
     }
     logarSeInesperado(erro, deps, 'tratarVoz');

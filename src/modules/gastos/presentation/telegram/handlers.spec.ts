@@ -8,6 +8,7 @@ import { DownloadFalhouError } from './download.js';
 import { montarCallbackDesfazer } from './callback.js';
 import {
   formatarSemGastoNoAudio,
+  MENSAGEM_AUDIO_GRANDE,
   MENSAGEM_AUDIO_LONGO,
   MENSAGEM_TEXTO_LONGO,
   mensagemDeErro,
@@ -279,8 +280,9 @@ describe('tratarVoz', () => {
     const d = deps();
     const ctx = ctxVoz({ duration: 5, file_size: MAX_BYTES_AUDIO + 1 });
     await tratarVoz(ctx, d);
+    expect(ctx.getFile).not.toHaveBeenCalled();
     expect(d.baixarArquivo).not.toHaveBeenCalled();
-    expect(ctx.reply).toHaveBeenCalledWith(MENSAGEM_AUDIO_LONGO);
+    expect(ctx.reply).toHaveBeenCalledWith(MENSAGEM_AUDIO_GRANDE);
   });
 
   it('exatamente no limite é aceito', async () => {
@@ -317,6 +319,41 @@ describe('tratarVoz', () => {
     await tratarVoz(ctx, d);
     expect(ctx.reply).toHaveBeenCalledWith(
       mensagemDeErro(new NenhumGastoEncontradoError('x')),
+    );
+  });
+
+  it('transcrição só com espaços → mensagem padrão', async () => {
+    const d = deps({
+      registrar: {
+        executar: vi.fn(async () => {
+          throw new NenhumGastoEncontradoError('x', '  ');
+        }),
+      },
+    });
+    const ctx = ctxVoz({ duration: 3 });
+    await tratarVoz(ctx, d);
+    expect(ctx.reply).toHaveBeenCalledWith(
+      mensagemDeErro(new NenhumGastoEncontradoError('x')),
+    );
+  });
+
+  it('erro inesperado é logado só com o nome', async () => {
+    const d = deps({
+      registrar: {
+        executar: vi.fn(async () => {
+          throw new Error('texto privado');
+        }),
+      },
+    });
+    const ctx = ctxVoz({ duration: 3 });
+    await tratarVoz(ctx, d);
+    expect(ctx.reply).toHaveBeenCalledWith('Erro inesperado. Tente de novo.');
+    expect(d.logger.error).toHaveBeenCalledOnce();
+    const [msg] = vi.mocked(d.logger.error).mock.calls[0]!;
+    expect(msg).toContain('tratarVoz');
+    expect(msg).toContain('Error');
+    expect(JSON.stringify(vi.mocked(d.logger.error).mock.calls)).not.toContain(
+      'texto privado',
     );
   });
 

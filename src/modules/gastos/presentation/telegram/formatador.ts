@@ -42,6 +42,7 @@ export const TEXTO_AJUDA = [
 export const TEXTO_START = `Olá! Eu registro seus gastos.\n\n${TEXTO_AJUDA}`;
 export const MENSAGEM_TEXTO_LONGO = `Mensagem muito longa (máximo de ${MAX_CARACTERES_TEXTO} caracteres).`;
 export const MENSAGEM_AUDIO_LONGO = `Áudio muito longo (máximo de ${MAX_DURACAO_AUDIO_S} s).`;
+export const MENSAGEM_AUDIO_GRANDE = 'Áudio muito grande (máximo de 1 MB).';
 export const MENSAGEM_NAO_SUPORTADO =
   'Por enquanto só entendo mensagens de texto e de voz.';
 

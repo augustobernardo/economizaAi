@@ -68,11 +68,11 @@ export class TelegramBot implements OnModuleInit, OnModuleDestroy {
     bot.on('message:voice', (ctx) => tratarVoz(ctx, deps));
     bot.on('callback_query:data', (ctx) => tratarDesfazer(ctx, deps));
     bot.on('message', (ctx) => tratarNaoSuportado(ctx));
-    // Só nome e mensagem: erros de rede podem carregar a URL com o token na stack.
+    // Só o nome: message e stack podem conter texto do usuário ou a URL com o token.
     bot.catch((err) => {
       const erro = err.error;
       this.logger.error(
-        `Erro não tratado no update ${err.ctx.update.update_id}: ${erro instanceof Error ? `${erro.name}: ${erro.message}` : typeof erro}`,
+        `Erro não tratado no update ${err.ctx.update.update_id}: ${erro instanceof Error ? erro.name : typeof erro}`,
       );
     });
 
