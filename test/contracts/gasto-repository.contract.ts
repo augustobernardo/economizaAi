@@ -131,6 +131,16 @@ export function testarContratoGastoRepository(
       expect(lista).toHaveLength(1);
     });
 
+    it('salvar lista vazia não faz nada', async () => {
+      await expect(repositorio.salvarVarios([])).resolves.toBeUndefined();
+
+      const lista = await repositorio.listarPorPeriodo(
+        '2026-01-01',
+        '2027-01-01',
+      );
+      expect(lista).toEqual([]);
+    });
+
     it('remover id inexistente não lança', async () => {
       await expect(
         repositorio.removerPorIds([crypto.randomUUID()]),
