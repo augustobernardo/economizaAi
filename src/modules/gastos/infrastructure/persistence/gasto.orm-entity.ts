@@ -27,4 +27,8 @@ export class GastoOrmEntity {
 
   @Column({ type: 'timestamptz', name: 'criado_em' })
   criadoEm!: Date;
+
+  /** Agrupa os gastos de uma mesma mensagem (usado pelo Desfazer). */
+  @Column({ type: 'uuid', name: 'registro_id' })
+  registroId!: string;
 }

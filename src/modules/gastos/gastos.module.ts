@@ -50,9 +50,9 @@ const AMBIENTES_COM_ROTAS_DE_DEV = ['development', 'test'];
     },
     {
       provide: DesfazerRegistroUseCase,
-      inject: [GASTO_REPOSITORY],
-      useFactory: (repositorio: GastoRepository) =>
-        new DesfazerRegistroUseCase(repositorio),
+      inject: [GASTO_REPOSITORY, RELOGIO],
+      useFactory: (repositorio: GastoRepository, relogio: Relogio) =>
+        new DesfazerRegistroUseCase(repositorio, relogio),
     },
   ],
 })

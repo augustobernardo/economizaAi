@@ -43,6 +43,7 @@ describe('TypeOrmGastoRepository (banco real)', () => {
       origem: 'texto',
       textoOriginal: 'x',
       criadoEm: new Date('2026-06-15T12:00:00Z'),
+      registroId: crypto.randomUUID(),
     });
 
     await expect(
@@ -70,6 +71,7 @@ describe('TypeOrmGastoRepository (banco real)', () => {
       origem: base.origem,
       textoOriginal: base.textoOriginal,
       criadoEm: base.criadoEm,
+      registroId: base.registroId,
       ...invalido,
     } as Parameters<typeof Gasto.restaurar>[0]);
 

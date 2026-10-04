@@ -158,6 +158,7 @@ describe('GeminiExtrator', () => {
           origem: 'texto',
           textoOriginal: TEXTO,
           agora: DATA,
+          registroId: crypto.randomUUID(),
         }),
       ).toThrow(ValorAcimaDoTetoError);
     });

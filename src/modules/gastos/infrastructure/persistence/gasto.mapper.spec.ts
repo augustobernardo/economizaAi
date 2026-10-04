@@ -10,6 +10,13 @@ describe('gasto.mapper', () => {
     expect(volta.valor.centavos).toBe(gasto.valor.centavos);
   });
 
+  it('preserva registroId na ida e volta', () => {
+    const gasto = umGasto().doRegistro(crypto.randomUUID()).build();
+    const linha = paraPersistencia(gasto);
+    expect(linha.registroId).toBe(gasto.registroId);
+    expect(paraDominio(linha).registroId).toBe(gasto.registroId);
+  });
+
   it('gera valorCentavos inteiro', () => {
     const linha = paraPersistencia(umGasto().comValor(50).build());
     expect(linha.valorCentavos).toBe(5000);

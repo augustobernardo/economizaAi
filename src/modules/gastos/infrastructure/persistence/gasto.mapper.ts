@@ -15,6 +15,7 @@ export function paraDominio(linha: GastoOrmEntity): Gasto {
     origem: linha.origem as OrigemGasto,
     textoOriginal: linha.textoOriginal,
     criadoEm: linha.criadoEm,
+    registroId: linha.registroId,
   });
 }
 
@@ -28,5 +29,6 @@ export function paraPersistencia(gasto: Gasto): GastoOrmEntity {
   linha.origem = gasto.origem;
   linha.textoOriginal = gasto.textoOriginal;
   linha.criadoEm = gasto.criadoEm;
+  linha.registroId = gasto.registroId;
   return linha;
 }

@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { And, DataSource, In, LessThan, MoreThanOrEqual } from 'typeorm';
+import { And, DataSource, LessThan, MoreThanOrEqual } from 'typeorm';
 import type { Gasto } from '../../domain/gasto.js';
 import type { GastoRepository } from '../../domain/ports/gasto.repository.js';
 import { GastoOrmEntity } from './gasto.orm-entity.js';
@@ -15,9 +15,18 @@ export class TypeOrmGastoRepository implements GastoRepository {
     await this.dataSource.transaction((m) => m.insert(GastoOrmEntity, linhas));
   }
 
-  async removerPorIds(ids: string[]): Promise<void> {
-    if (ids.length === 0) return;
-    await this.dataSource.getRepository(GastoOrmEntity).delete({ id: In(ids) });
+  async removerDoRegistro(
+    registroId: string,
+    criadoDesde: Date,
+  ): Promise<number> {
+    const resultado = await this.dataSource
+      .createQueryBuilder()
+      .delete()
+      .from(GastoOrmEntity)
+      .where('registro_id = :registroId', { registroId })
+      .andWhere('criado_em >= :criadoDesde', { criadoDesde })
+      .execute();
+    return resultado.affected ?? 0;
   }
 
   async listarPorPeriodo(

@@ -146,6 +146,18 @@ export function testarContratoGastoRepository(
       expect(lista).toHaveLength(1);
     });
 
+    it('criadoDesde é inclusivo', async () => {
+      const registro = crypto.randomUUID();
+      const limite = new Date('2026-06-15T11:00:00Z');
+      await repositorio.salvarVarios([
+        umGasto().doRegistro(registro).em(limite).build(),
+      ]);
+
+      await expect(
+        repositorio.removerDoRegistro(registro, limite),
+      ).resolves.toBe(1);
+    });
+
     it('registro inexistente devolve 0 sem lançar', async () => {
       await expect(
         repositorio.removerDoRegistro(crypto.randomUUID(), new Date(0)),
