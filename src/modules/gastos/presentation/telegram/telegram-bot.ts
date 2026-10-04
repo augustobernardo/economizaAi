@@ -9,11 +9,14 @@ import { ConfigService } from '@nestjs/config';
 import { Bot } from 'grammy';
 import { DesfazerRegistroUseCase } from '../../application/use-cases/desfazer-registro.use-case.js';
 import { RegistrarGastosUseCase } from '../../application/use-cases/registrar-gastos.use-case.js';
+import { MAX_BYTES_AUDIO } from '../limites.js';
+import { baixarArquivo, TIMEOUT_DOWNLOAD_MS } from './download.js';
 import { TEXTO_AJUDA, TEXTO_START } from './formatador.js';
 import {
   tratarDesfazer,
   tratarNaoSuportado,
   tratarTexto,
+  tratarVoz,
   type DepsTelegram,
 } from './handlers.js';
 import { criarOwnerGuard } from './owner-guard.js';
@@ -37,11 +40,18 @@ export class TelegramBot implements OnModuleInit, OnModuleDestroy {
     // Testes não abrem long polling (rede, cota e 409 Conflict).
     if (process.env.NODE_ENV === 'test') return;
 
-    const bot = new Bot(this.config.getOrThrow<string>('TELEGRAM_BOT_TOKEN'));
+    const token = this.config.getOrThrow<string>('TELEGRAM_BOT_TOKEN');
+    const bot = new Bot(token);
     const deps: DepsTelegram = {
       registrar: this.registrar,
       desfazer: this.desfazer,
       logger: this.logger,
+      // A URL carrega o token: existe só aqui e nunca é logada.
+      baixarArquivo: (caminho) =>
+        baixarArquivo(`https://api.telegram.org/file/bot${token}/${caminho}`, {
+          timeoutMs: TIMEOUT_DOWNLOAD_MS,
+          maxBytes: MAX_BYTES_AUDIO,
+        }),
     };
 
     // A ordem importa: owner guard é sempre o primeiro (SECURITY.md §3.2).
@@ -55,6 +65,7 @@ export class TelegramBot implements OnModuleInit, OnModuleDestroy {
     bot.command('start', (ctx) => ctx.reply(TEXTO_START));
     bot.command('ajuda', (ctx) => ctx.reply(TEXTO_AJUDA));
     bot.on('message:text', (ctx) => tratarTexto(ctx, deps));
+    bot.on('message:voice', (ctx) => tratarVoz(ctx, deps));
     bot.on('callback_query:data', (ctx) => tratarDesfazer(ctx, deps));
     bot.on('message', (ctx) => tratarNaoSuportado(ctx));
     // Só nome e mensagem: erros de rede podem carregar a URL com o token na stack.

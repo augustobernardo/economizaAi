@@ -22,6 +22,8 @@ export async function baixarArquivo(
   try {
     resposta = await fetch(url, {
       signal: AbortSignal.timeout(opcoes.timeoutMs),
+      // A URL carrega o token: nunca seguir redirecionamento.
+      redirect: 'error',
     });
   } catch {
     throw new DownloadFalhouError();

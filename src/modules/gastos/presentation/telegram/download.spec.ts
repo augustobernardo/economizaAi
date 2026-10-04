@@ -25,6 +25,13 @@ describe('baixarArquivo', () => {
     expect(init.signal).toBeInstanceOf(AbortSignal);
   });
 
+  it('não segue redirecionamentos (o token iria junto)', async () => {
+    const fetch = fetchQueResponde(new Uint8Array([1]));
+    await baixarArquivo(URL_SECRETA, { ...OPCOES, fetch });
+    const init = vi.mocked(fetch).mock.calls[0]![1] as RequestInit;
+    expect(init.redirect).toBe('error');
+  });
+
   it('status não-OK → DownloadFalhouError', async () => {
     const fetch = fetchQueResponde(new Uint8Array(), { status: 404 });
     await expect(

@@ -1,10 +1,19 @@
 import { InlineKeyboard } from 'grammy';
+import { NenhumGastoEncontradoError } from '../../application/errors.js';
 import type { DesfazerRegistroUseCase } from '../../application/use-cases/desfazer-registro.use-case.js';
 import type { RegistrarGastosUseCase } from '../../application/use-cases/registrar-gastos.use-case.js';
-import { MAX_CARACTERES_TEXTO } from '../limites.js';
+import {
+  MAX_BYTES_AUDIO,
+  MAX_CARACTERES_TEXTO,
+  MAX_DURACAO_AUDIO_S,
+} from '../limites.js';
 import { lerCallbackDesfazer, montarCallbackDesfazer } from './callback.js';
+import { DownloadFalhouError } from './download.js';
 import {
   formatarRegistro,
+  formatarRegistroDeAudio,
+  formatarSemGastoNoAudio,
+  MENSAGEM_AUDIO_LONGO,
   MENSAGEM_NAO_SUPORTADO,
   MENSAGEM_TEXTO_LONGO,
   mensagemDeErro,
@@ -15,10 +24,20 @@ export interface DepsTelegram {
   registrar: Pick<RegistrarGastosUseCase, 'executar'>;
   desfazer: Pick<DesfazerRegistroUseCase, 'executar'>;
   logger: { error(mensagem: string): void };
+  baixarArquivo(filePath: string): Promise<Buffer>;
 }
 
 export interface CtxTexto {
   msg: { text: string };
+  reply(
+    texto: string,
+    extra?: { reply_markup?: InlineKeyboard },
+  ): Promise<unknown>;
+}
+
+export interface CtxVoz {
+  msg: { voice: { duration: number; file_size?: number } };
+  getFile(): Promise<{ file_path?: string }>;
   reply(
     texto: string,
     extra?: { reply_markup?: InlineKeyboard },
@@ -30,6 +49,13 @@ export interface CtxCallback {
   answerCallbackQuery(texto?: string): Promise<unknown>;
   editMessageText(texto: string): Promise<unknown>;
   editMessageReplyMarkup(): Promise<unknown>;
+}
+
+function tecladoDesfazer(registroId: string): InlineKeyboard {
+  return new InlineKeyboard().text(
+    '↩️ Desfazer',
+    montarCallbackDesfazer(registroId),
+  );
 }
 
 function ehErroConhecido(erro: unknown): boolean {
@@ -68,13 +94,52 @@ export async function tratarTexto(
       texto,
     });
     await ctx.reply(formatarRegistro(gastos), {
-      reply_markup: new InlineKeyboard().text(
-        '↩️ Desfazer',
-        montarCallbackDesfazer(registroId),
-      ),
+      reply_markup: tecladoDesfazer(registroId),
     });
   } catch (erro) {
     logarSeInesperado(erro, deps, 'tratarTexto');
+    await ctx.reply(mensagemDeErro(erro));
+  }
+}
+
+async function baixarVoz(ctx: CtxVoz, deps: DepsTelegram): Promise<Buffer> {
+  let caminho: string | undefined;
+  try {
+    caminho = (await ctx.getFile()).file_path;
+  } catch {
+    throw new DownloadFalhouError();
+  }
+  if (!caminho) throw new DownloadFalhouError();
+  return deps.baixarArquivo(caminho);
+}
+
+export async function tratarVoz(
+  ctx: CtxVoz,
+  deps: DepsTelegram,
+): Promise<void> {
+  const { duration, file_size } = ctx.msg.voice;
+  if (duration > MAX_DURACAO_AUDIO_S || (file_size ?? 0) > MAX_BYTES_AUDIO) {
+    await ctx.reply(MENSAGEM_AUDIO_LONGO);
+    return;
+  }
+  try {
+    const audio = await baixarVoz(ctx, deps);
+    const { registroId, gastos, textoOriginal } = await deps.registrar.executar(
+      {
+        tipo: 'audio',
+        audio,
+        mimeType: 'audio/ogg',
+      },
+    );
+    await ctx.reply(formatarRegistroDeAudio(textoOriginal, gastos), {
+      reply_markup: tecladoDesfazer(registroId),
+    });
+  } catch (erro) {
+    if (erro instanceof NenhumGastoEncontradoError && erro.textoOriginal) {
+      await ctx.reply(formatarSemGastoNoAudio(erro.textoOriginal));
+      return;
+    }
+    logarSeInesperado(erro, deps, 'tratarVoz');
     await ctx.reply(mensagemDeErro(erro));
   }
 }
