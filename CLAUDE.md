@@ -145,9 +145,9 @@ recomeçou do zero em 2026-10-03.
 | 5 — Adapter Gemini | ✅ (texto; test:ia manual ainda não rodado) |
 | 6 — Adapter Groq + Fallback | ⏸️ adiada (só Gemini por enquanto) |
 | 7 — Telegram texto | ✅ (grammY; Desfazer por registroId) |
-| 8 — Telegram áudio | 🔧 próxima |
+| 8 — Telegram áudio | 🔧 implementada; falta validação manual por voz |
 | 9 — (removida) | ❌ |
-| 10 — Exportação CSV/MD | ⏳ |
+| 10 — Exportação, resumo e últimos | 🔧 em andamento |
 | 11 — Docker + Easypanel | ⏳ (Postgres de produção já existe no Easypanel) |
 
 Infraestrutura de produção endurecida e com backup no R2 em 04/10/2026

@@ -15,7 +15,7 @@ Somente o diff da etapa atual: `git diff` e `git diff --staged` contra o
 
 ## Checklist
 **Arquitetura**
-- `domain/` importa algo de fora de `domain/`? (`grep -rn "from '@nestjs\|from 'typeorm\|from 'telegraf" src/modules/*/domain`)
+- `domain/` importa algo de fora de `domain/`? (`grep -rn "from '@nestjs\|from 'typeorm\|from 'grammy" src/modules/*/domain`)
 - Caso de uso importa adapter concreto?
 - Regra de negócio em handler, controller ou adapter?
 - Ligação port→adapter fora de `gastos.module.ts`?
