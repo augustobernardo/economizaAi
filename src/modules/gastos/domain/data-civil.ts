@@ -23,9 +23,15 @@ export function ehDataCivilValida(data: string): boolean {
   );
 }
 
-function paraUTC(data: string): number {
+/** `[ano, mes, dia]` de uma data `YYYY-MM-DD` já validada. */
+export function partesDaData(data: string): [number, number, number] {
   const [ano, mes, dia] = data.split('-').map(Number);
-  return Date.UTC(ano!, mes! - 1, dia!);
+  return [ano!, mes!, dia!];
+}
+
+function paraUTC(data: string): number {
+  const [ano, mes, dia] = partesDaData(data);
+  return Date.UTC(ano, mes - 1, dia);
 }
 
 function formatarUTC(instante: number): string {
@@ -42,8 +48,8 @@ export function somarDias(data: string, dias: number): string {
 
 /** Mesmo dia/mês `anos` antes (29/02 vira 01/03 se o ano alvo não é bissexto). */
 export function subtrairAnos(data: string, anos: number): string {
-  const [ano, mes, dia] = data.split('-').map(Number);
-  return formatarUTC(Date.UTC(ano! - anos, mes! - 1, dia!));
+  const [ano, mes, dia] = partesDaData(data);
+  return formatarUTC(Date.UTC(ano - anos, mes - 1, dia));
 }
 
 /** `fim - inicio`, em dias. */

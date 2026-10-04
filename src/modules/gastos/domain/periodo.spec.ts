@@ -28,6 +28,18 @@ describe('Periodo', () => {
       '2026-10-05',
     ]);
   });
+  it('início hoje com fim no futuro vira dia único', () => {
+    const p = Periodo.criar('2026-10-04', '2026-10-10', HOJE);
+    expect([p.tipo, p.descrever(), p.slug]).toEqual([
+      'dia',
+      '04/10/2026',
+      '2026-10-04',
+    ]);
+  });
+  it('mês pedido inteiro continua mês mesmo cortado no dia 1', () => {
+    const p = Periodo.criar('2026-10-01', '2026-10-31', '2026-10-01');
+    expect([p.tipo, p.fim, p.slug]).toEqual(['mes', '2026-10-01', '2026-10']);
+  });
   it('mês inteiro no passado', () => {
     const p = Periodo.criar('2026-08-01', '2026-08-31', HOJE);
     expect([p.tipo, p.descrever(), p.slug]).toEqual([

@@ -2,6 +2,7 @@ import {
   diasEntre,
   ehDataCivilValida,
   formatarDataBr,
+  partesDaData,
   somarDias,
   ultimoDiaDoMes,
 } from './data-civil.js';
@@ -29,18 +30,17 @@ const MESES = [
 export const MAX_DIAS_PERIODO = 366;
 export type TipoPeriodo = 'dia' | 'mes' | 'intervalo';
 
-function partes(data: string): [number, number, number] {
-  const [a, m, d] = data.split('-').map(Number);
-  return [a!, m!, d!];
-}
-
-function classificar(inicio: string, fimPedido: string): TipoPeriodo {
-  if (inicio === fimPedido) return 'dia';
-  const [ai, mi, di] = partes(inicio);
-  const [af, mf, df] = partes(fimPedido);
-  return di === 1 && ai === af && mi === mf && df === ultimoDiaDoMes(af, mf)
-    ? 'mes'
-    : 'intervalo';
+/** Mês pedido inteiro é "mês" mesmo cortado em hoje; fora isso, um só dia efetivo é "dia". */
+function classificar(
+  inicio: string,
+  fimEfetivo: string,
+  fimPedido: string,
+): TipoPeriodo {
+  const [ai, mi, di] = partesDaData(inicio);
+  const [af, mf, df] = partesDaData(fimPedido);
+  if (di === 1 && ai === af && mi === mf && df === ultimoDiaDoMes(af, mf))
+    return 'mes';
+  return inicio === fimEfetivo ? 'dia' : 'intervalo';
 }
 
 /** Intervalo de datas civis (inclusivo) já validado: nunca no futuro, nunca maior que 1 ano. */
@@ -70,12 +70,16 @@ export class Periodo {
         `Período de ${inicio} a ${fimEfetivo} passa de ${MAX_DIAS_PERIODO} dias`,
       );
     }
-    return new Periodo(inicio, fimEfetivo, classificar(inicio, fim));
+    return new Periodo(
+      inicio,
+      fimEfetivo,
+      classificar(inicio, fimEfetivo, fim),
+    );
   }
 
   /** Mês de `hoje` deslocado (0 = atual, -1 = anterior). */
   static doMes(hoje: string, deslocamento: number): Periodo {
-    const [ano, mes] = partes(hoje);
+    const [ano, mes] = partesDaData(hoje);
     const indice = ano * 12 + (mes - 1) + deslocamento;
     const a = Math.floor(indice / 12);
     const m = (indice % 12) + 1;
@@ -97,7 +101,7 @@ export class Periodo {
   descrever(): string {
     if (this.tipo === 'dia') return formatarDataBr(this.inicio);
     if (this.tipo === 'mes') {
-      const [ano, mes] = partes(this.inicio);
+      const [ano, mes] = partesDaData(this.inicio);
       return `${MESES[mes - 1]} de ${ano}`;
     }
     return `${formatarDataBr(this.inicio)} a ${formatarDataBr(this.fim)}`;

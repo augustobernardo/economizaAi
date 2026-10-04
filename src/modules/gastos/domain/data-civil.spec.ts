@@ -4,7 +4,9 @@ import {
   ehDataCivilValida,
   formatarDataBr,
   hojeEmSaoPaulo,
+  partesDaData,
   somarDias,
+  subtrairAnos,
   ultimoDiaDoMes,
 } from './data-civil.js';
 
@@ -25,6 +27,13 @@ describe('data-civil', () => {
   it('somarDias atravessa mês e ano', () => {
     expect(somarDias('2026-12-31', 1)).toBe('2027-01-01');
     expect(somarDias('2026-03-01', -1)).toBe('2026-02-28');
+  });
+  it('subtrairAnos', () => {
+    expect(subtrairAnos('2028-02-29', 1)).toBe('2027-03-01');
+    expect(subtrairAnos('2026-10-04', 1)).toBe('2025-10-04');
+  });
+  it('partesDaData', () => {
+    expect(partesDaData('2026-10-04')).toEqual([2026, 10, 4]);
   });
   it('diasEntre', () => {
     expect(diasEntre('2026-10-01', '2026-10-01')).toBe(0);

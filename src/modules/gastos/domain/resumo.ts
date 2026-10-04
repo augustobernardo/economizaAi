@@ -18,7 +18,7 @@ export interface ResumoDeGastos {
 
 /** Resume uma lista não vazia de gastos; lista vazia é erro de programação. */
 export function resumir(gastos: readonly Gasto[]): ResumoDeGastos {
-  const [primeiro, ...resto] = gastos;
+  const [primeiro] = gastos;
   if (!primeiro) throw new RangeError('resumir exige ao menos um gasto');
 
   const porCategoria = new Map<Categoria, number>();
@@ -30,8 +30,6 @@ export function resumir(gastos: readonly Gasto[]): ResumoDeGastos {
       gasto.categoria,
       (porCategoria.get(gasto.categoria) ?? 0) + gasto.valor.centavos,
     );
-  }
-  for (const gasto of resto) {
     if (gasto.valor.centavos > maiorGasto.valor.centavos) maiorGasto = gasto;
   }
 
