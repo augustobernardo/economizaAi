@@ -51,7 +51,7 @@ importam tanto quanto a funcionalidade.
 - IA para **extrair**: **Gemini** (principal; entende áudio nativamente,
   structured output). Fallback para **Groq** (Whisper + LLM) adiado: por ora só Gemini.
   Hermes foi avaliado e descartado (sem áudio, free tier menor).
-- Validação: **zod** (env e respostas de IA) e class-validator (DTOs HTTP)
+- Validação: **zod** (env, respostas de IA e corpo HTTP via `ZodValidationPipe` com `.strict()`)
 - Testes: Vitest (padrão do Nest 12); Postgres real para testes de integração
 - Lint: oxlint type-aware; formatação: Prettier. Módulos: ESM (`"type": "module"`, imports com `.js`)
 - Deploy: Docker multi-stage no **Easypanel**, repositório no GitHub
