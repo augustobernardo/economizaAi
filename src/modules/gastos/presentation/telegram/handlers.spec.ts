@@ -3,12 +3,8 @@ import { umGasto } from '../../../../../test/builders/gasto.builder.js';
 import { ProvedorIndisponivelError } from '../../application/errors.js';
 import { montarCallbackDesfazer } from './callback.js';
 import { MENSAGEM_TEXTO_LONGO, TEXTO_AJUDA } from './formatador.js';
-import {
-  MAX_CARACTERES_TEXTO,
-  tratarDesfazer,
-  tratarTexto,
-  type DepsTelegram,
-} from './handlers.js';
+import { MAX_CARACTERES_TEXTO } from '../limites.js';
+import { tratarDesfazer, tratarTexto, type DepsTelegram } from './handlers.js';
 
 const REGISTRO = '3f1c2a9e-8b7d-4c6e-9a1b-2d3e4f5a6b7c';
 

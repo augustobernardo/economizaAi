@@ -1,0 +1,1 @@
+export const MAX_CARACTERES_TEXTO = 500;

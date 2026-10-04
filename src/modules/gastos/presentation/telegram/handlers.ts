@@ -1,6 +1,7 @@
 import { InlineKeyboard } from 'grammy';
 import type { DesfazerRegistroUseCase } from '../../application/use-cases/desfazer-registro.use-case.js';
 import type { RegistrarGastosUseCase } from '../../application/use-cases/registrar-gastos.use-case.js';
+import { MAX_CARACTERES_TEXTO } from '../limites.js';
 import { lerCallbackDesfazer, montarCallbackDesfazer } from './callback.js';
 import {
   formatarRegistro,
@@ -9,8 +10,6 @@ import {
   mensagemDeErro,
   TEXTO_AJUDA,
 } from './formatador.js';
-
-export const MAX_CARACTERES_TEXTO = 500;
 
 export interface DepsTelegram {
   registrar: Pick<RegistrarGastosUseCase, 'executar'>;

@@ -22,6 +22,16 @@ describe('rate limit', () => {
     expect(ctx.reply).toHaveBeenCalledWith(MENSAGEM_RATE_LIMIT);
   });
 
+  it('callback barrado sempre responde o callback', async () => {
+    const { limite, ctx, next } = montar();
+    const answerCallbackQuery = vi.fn(async () => undefined);
+    const cb = { ...ctx, callbackQuery: {}, answerCallbackQuery };
+    for (let i = 0; i < 23; i++) await limite(cb, next);
+    expect(answerCallbackQuery).toHaveBeenCalledTimes(3);
+    expect(answerCallbackQuery).toHaveBeenCalledWith(MENSAGEM_RATE_LIMIT);
+    expect(ctx.reply).toHaveBeenCalledOnce();
+  });
+
   it('nova janela libera de novo', async () => {
     const { limite, ctx, next, avancar } = montar();
     for (let i = 0; i < 21; i++) await limite(ctx, next);

@@ -14,6 +14,7 @@ import {
   ValorInvalidoError,
 } from '../../domain/errors.js';
 import type { Gasto } from '../../domain/gasto.js';
+import { MAX_CARACTERES_TEXTO } from '../limites.js';
 
 const ROTULOS: Record<Categoria, string> = {
   alimentacao: 'alimentação',
@@ -37,8 +38,7 @@ export const TEXTO_AJUDA = [
 ].join('\n');
 
 export const TEXTO_START = `Olá! Eu registro seus gastos.\n\n${TEXTO_AJUDA}`;
-export const MENSAGEM_TEXTO_LONGO =
-  'Mensagem muito longa (máximo de 500 caracteres).';
+export const MENSAGEM_TEXTO_LONGO = `Mensagem muito longa (máximo de ${MAX_CARACTERES_TEXTO} caracteres).`;
 export const MENSAGEM_NAO_SUPORTADO =
   'Por enquanto só entendo mensagens de texto.';
 

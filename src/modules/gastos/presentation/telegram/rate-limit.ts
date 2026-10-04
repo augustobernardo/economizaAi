@@ -1,6 +1,8 @@
 export interface CtxRateLimit {
   from?: { id: number };
+  callbackQuery?: unknown;
   reply(texto: string): Promise<unknown>;
+  answerCallbackQuery?(texto?: string): Promise<unknown>;
 }
 
 export const MENSAGEM_RATE_LIMIT =
@@ -30,6 +32,8 @@ export function criarRateLimit(opcoes: {
     }
     janela.contagem++;
     if (janela.contagem <= opcoes.limite) return next();
+    // Sem isto o spinner do botão fica girando em cada clique barrado.
+    if (ctx.callbackQuery) await ctx.answerCallbackQuery?.(MENSAGEM_RATE_LIMIT);
     if (janela.contagem === opcoes.limite + 1)
       await ctx.reply(MENSAGEM_RATE_LIMIT);
   };

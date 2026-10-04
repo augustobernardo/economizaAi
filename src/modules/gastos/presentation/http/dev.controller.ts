@@ -10,10 +10,9 @@ import {
 import { z } from 'zod';
 import { DesfazerRegistroUseCase } from '../../application/use-cases/desfazer-registro.use-case.js';
 import { RegistrarGastosUseCase } from '../../application/use-cases/registrar-gastos.use-case.js';
+import { MAX_CARACTERES_TEXTO } from '../limites.js';
 import { ErrosHttpFilter } from './erros-http.filter.js';
 import { ZodValidationPipe } from './zod-validation.pipe.js';
-
-const MAX_CARACTERES_TEXTO = 500;
 
 export const textoSchema = z
   .object({ texto: z.string().trim().min(1).max(MAX_CARACTERES_TEXTO) })

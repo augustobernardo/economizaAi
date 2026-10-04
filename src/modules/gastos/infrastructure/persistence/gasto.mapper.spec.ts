@@ -3,7 +3,7 @@ import { umGasto } from '../../../../../test/builders/gasto.builder.js';
 import { paraDominio, paraPersistencia } from './gasto.mapper.js';
 
 describe('gasto.mapper', () => {
-  it('preserva os 8 campos na ida e volta', () => {
+  it('preserva todos os campos na ida e volta', () => {
     const gasto = umGasto().build();
     const volta = paraDominio(paraPersistencia(gasto));
     expect(volta).toEqual(gasto);

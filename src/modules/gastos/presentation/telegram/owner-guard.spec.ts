@@ -13,11 +13,35 @@ describe('owner guard', () => {
   it('dono passa', async () => {
     const { guard, next, logger } = montar();
     await guard(
-      { from: { id: DONO }, update: { update_id: 1, message: {} } },
+      {
+        from: { id: DONO },
+        chat: { type: 'private' },
+        update: { update_id: 1, message: {} },
+      },
       next,
     );
     expect(next).toHaveBeenCalledOnce();
     expect(logger.warn).not.toHaveBeenCalled();
+  });
+
+  it('dono em grupo é bloqueado', async () => {
+    const { guard, next, logger } = montar();
+    await guard(
+      {
+        from: { id: DONO },
+        chat: { type: 'group' },
+        update: { update_id: 1, message: {} },
+      },
+      next,
+    );
+    expect(next).not.toHaveBeenCalled();
+    expect(logger.warn).toHaveBeenCalledOnce();
+  });
+
+  it('dono sem chat é bloqueado', async () => {
+    const { guard, next } = montar();
+    await guard({ from: { id: DONO }, update: { update_id: 1 } }, next);
+    expect(next).not.toHaveBeenCalled();
   });
 
   it('estranho é bloqueado e logado sem conteúdo', async () => {
