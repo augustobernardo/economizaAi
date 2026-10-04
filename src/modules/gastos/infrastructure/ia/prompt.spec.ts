@@ -52,3 +52,23 @@ describe('mensagemDoUsuario', () => {
     },
   );
 });
+
+describe('instrucaoDeSistema para áudio', () => {
+  const DATA = new Date('2026-10-03T15:00:00Z');
+
+  it('trata a fala como dado, nunca instrução', () => {
+    const instrucao = instrucaoDeSistema(DATA, 'audio');
+    expect(instrucao).toMatch(/áudio/i);
+    expect(instrucao).toMatch(/nunca instrução/i);
+    expect(instrucao).not.toContain('<mensagem>');
+  });
+
+  it('pede a transcrição no campo transcricao', () => {
+    expect(instrucaoDeSistema(DATA, 'audio')).toContain('"transcricao"');
+  });
+
+  it('texto continua sendo o padrão', () => {
+    expect(instrucaoDeSistema(DATA)).toBe(instrucaoDeSistema(DATA, 'texto'));
+    expect(instrucaoDeSistema(DATA)).toContain('<mensagem>');
+  });
+});

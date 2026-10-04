@@ -24,4 +24,13 @@ const { $schema: _omitido, ...jsonSchema } = z.toJSONSchema(
 );
 export const respostaExtracaoJsonSchema = jsonSchema;
 
+export const respostaExtracaoAudioSchema = respostaExtracaoSchema
+  .extend({ transcricao: z.string().trim().max(2000) })
+  .strict();
+
+const { $schema: _omitidoAudio, ...jsonSchemaAudio } = z.toJSONSchema(
+  respostaExtracaoAudioSchema,
+);
+export const respostaExtracaoAudioJsonSchema = jsonSchemaAudio;
+
 export type RespostaExtracao = z.infer<typeof respostaExtracaoSchema>;
