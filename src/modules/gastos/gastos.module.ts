@@ -19,9 +19,14 @@ import { TypeOrmGastoRepository } from './infrastructure/persistence/typeorm-gas
 import { RelogioSistema } from './infrastructure/relogio-sistema.js';
 import { DevController } from './presentation/http/dev.controller.js';
 
+// Allowlist (fecha por padrão): NODE_ENV ausente ou desconhecido não expõe /dev/*.
+const AMBIENTES_COM_ROTAS_DE_DEV = ['development', 'test'];
+
 /** Único lugar que liga ports a adapters. */
 @Module({
-  controllers: process.env.NODE_ENV === 'production' ? [] : [DevController],
+  controllers: AMBIENTES_COM_ROTAS_DE_DEV.includes(process.env.NODE_ENV ?? '')
+    ? [DevController]
+    : [],
   providers: [
     { provide: GASTO_REPOSITORY, useClass: TypeOrmGastoRepository },
     { provide: RELOGIO, useClass: RelogioSistema },
