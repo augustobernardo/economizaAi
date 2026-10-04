@@ -112,6 +112,10 @@ riscos e pontos fracos sejam apontados antes de validar uma ideia.
 | Banco | `economizaai` (+ `economizaai_test`) | `economiza-ai` |
 | Bot do Telegram | bot de **dev** (token próprio) | bot de **produção** |
 
+> Produção fica atrás de Cloudflare (DNS, proxy e Access) e do firewall da
+> <PROVEDOR_DA_VPS>; só SSH e as faixas da Cloudflare entram. Detalhes e riscos aceitos
+> em `SECURITY.md`, seção 7. Agentes não acessam a infraestrutura.
+
 - Nomes de serviço do docker-compose só resolvem entre containers, nunca do
   processo Node no host.
 - `POSTGRES_PASSWORD` só vale na criação do volume; mudar depois exige
@@ -145,3 +149,6 @@ recomeçou do zero em 2026-10-03.
 | 9 — (removida) | ❌ |
 | 10 — Exportação CSV/MD | ⏳ |
 | 11 — Docker + Easypanel | ⏳ (Postgres de produção já existe no Easypanel) |
+
+Infraestrutura de produção endurecida e com backup no R2 em 04/10/2026
+(ver `SECURITY.md` seção 7).
