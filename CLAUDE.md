@@ -61,7 +61,7 @@ importam tanto quanto a funcionalidade.
 ```
 modules/gastos/
   domain/          TypeScript puro: Dinheiro, Categoria, Gasto, erros, port do repositório
-  application/     casos de uso + ports (ExtratorDeGastos, Exportador, Relogio)
+  application/     casos de uso + ports (InterpretadorDeMensagem, Exportador, Relogio)
   infrastructure/  TypeORM, Gemini, Groq, Fallback, CSV, Markdown
   presentation/    Telegram (handlers, owner guard) e HTTP de dev
   gastos.module.ts único lugar que liga ports a adapters
@@ -147,7 +147,7 @@ recomeçou do zero em 2026-10-03.
 | 7 — Telegram texto | ✅ (grammY; Desfazer por registroId) |
 | 8 — Telegram áudio | 🔧 implementada; falta validação manual por voz |
 | 9 — (removida) | ❌ |
-| 10 — Exportação, resumo e últimos | 🔧 em andamento |
+| 10 — Exportação, resumo e últimos | 🔧 implementada; falta validação manual |
 | 11 — Docker + Easypanel | ⏳ (Postgres de produção já existe no Easypanel) |
 
 Infraestrutura de produção endurecida e com backup no R2 em 04/10/2026
