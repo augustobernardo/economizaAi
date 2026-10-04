@@ -17,6 +17,7 @@ const MENSAGEM_422 = 'Não foi possível registrar os gastos dessa mensagem.';
 
 /** Traduz erros conhecidos para HTTP com mensagem genérica; os demais caem no 500 padrão do Nest. */
 @Catch(
+  // @Catch exige construtor concreto; DomainError é abstrata.
   DomainError as unknown as Type<Error>,
   NenhumGastoEncontradoError,
   RespostaInvalidaDaIaError,

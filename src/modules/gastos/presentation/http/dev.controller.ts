@@ -16,10 +16,10 @@ import { ZodValidationPipe } from './zod-validation.pipe.js';
 const MAX_CARACTERES_TEXTO = 500;
 const MAX_IDS = 50;
 
-export const TextoSchema = z
+export const textoSchema = z
   .object({ texto: z.string().trim().min(1).max(MAX_CARACTERES_TEXTO) })
   .strict();
-export const IdsSchema = z
+export const idsSchema = z
   .object({ ids: z.array(z.uuid()).max(MAX_IDS) })
   .strict();
 
@@ -36,8 +36,8 @@ export class DevController {
 
   @Post('texto')
   async registrarTexto(
-    @Body(new ZodValidationPipe(TextoSchema))
-    corpo: z.infer<typeof TextoSchema>,
+    @Body(new ZodValidationPipe(textoSchema))
+    corpo: z.infer<typeof textoSchema>,
   ) {
     const { gastos, textoOriginal } = await this.registrar.executar({
       tipo: 'texto',
@@ -59,7 +59,7 @@ export class DevController {
   @Delete()
   @HttpCode(204)
   async desfazerRegistro(
-    @Body(new ZodValidationPipe(IdsSchema)) corpo: z.infer<typeof IdsSchema>,
+    @Body(new ZodValidationPipe(idsSchema)) corpo: z.infer<typeof idsSchema>,
   ): Promise<void> {
     await this.desfazer.executar(corpo.ids);
   }

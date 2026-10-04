@@ -1,8 +1,8 @@
 import { BadRequestException } from '@nestjs/common';
-import { TextoSchema } from './dev.controller.js';
+import { textoSchema } from './dev.controller.js';
 import { ZodValidationPipe } from './zod-validation.pipe.js';
 
-const pipe = new ZodValidationPipe(TextoSchema);
+const pipe = new ZodValidationPipe(textoSchema);
 
 describe('ZodValidationPipe', () => {
   it('aceita corpo válido', () => {
