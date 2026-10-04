@@ -25,5 +25,5 @@ describe('/dev/* em produção (e2e)', () => {
     } finally {
       await app.close();
     }
-  }, 30_000);
+  });
 });

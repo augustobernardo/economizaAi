@@ -10,6 +10,8 @@ export default defineConfig({
     include: ['**/*.e2e-spec.ts'],
     globalSetup: ['test/setup/migrar-banco-de-teste.ts'],
     fileParallelism: false,
+    testTimeout: 30_000,
+    hookTimeout: 30_000,
     // Env sintético para o ConfigModule.forRoot({ validate: validarEnv })
     // (src/app.module.ts) passar sem depender de um .env real: o Nest
     // decora e valida o ambiente já na importação do AppModule, antes de

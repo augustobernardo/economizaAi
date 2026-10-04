@@ -47,7 +47,7 @@ describe('TypeOrmGastoRepository (banco real)', () => {
 
     await expect(
       repositorio.salvarVarios([valido, invalido]),
-    ).rejects.toThrow();
+    ).rejects.toMatchObject({ driverError: { code: '23514' } });
 
     const [{ count }] = await dataSource.query<[{ count: string }]>(
       'SELECT count(*) FROM gastos',
@@ -73,7 +73,9 @@ describe('TypeOrmGastoRepository (banco real)', () => {
       ...invalido,
     } as Parameters<typeof Gasto.restaurar>[0]);
 
-    await expect(repositorio.salvarVarios([gasto])).rejects.toThrow();
+    await expect(repositorio.salvarVarios([gasto])).rejects.toMatchObject({
+      driverError: { code: '23514' },
+    });
   });
 
   it('trata dados de entrada como parâmetros, nunca como SQL', async () => {
