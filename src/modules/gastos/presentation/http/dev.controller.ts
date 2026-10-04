@@ -13,10 +13,15 @@ import { RegistrarGastosUseCase } from '../../application/use-cases/registrar-ga
 import { ErrosHttpFilter } from './erros-http.filter.js';
 import { ZodValidationPipe } from './zod-validation.pipe.js';
 
-const TextoSchema = z
-  .object({ texto: z.string().trim().min(1).max(500) })
+const MAX_CARACTERES_TEXTO = 500;
+const MAX_IDS = 50;
+
+export const TextoSchema = z
+  .object({ texto: z.string().trim().min(1).max(MAX_CARACTERES_TEXTO) })
   .strict();
-const IdsSchema = z.object({ ids: z.array(z.uuid()).max(50) }).strict();
+export const IdsSchema = z
+  .object({ ids: z.array(z.uuid()).max(MAX_IDS) })
+  .strict();
 
 /** Endpoint de desenvolvimento; só registrado fora de produção (ver GastosModule). */
 @Controller('dev/gastos')

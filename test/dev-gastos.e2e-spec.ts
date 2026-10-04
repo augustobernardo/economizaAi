@@ -4,6 +4,7 @@ import request from 'supertest';
 import { DataSource } from 'typeorm';
 import { AppModule } from '../src/app.module.js';
 import { EXTRATOR_DE_GASTOS } from '../src/modules/gastos/application/ports/extrator-de-gastos.js';
+import { ProvedorIndisponivelError } from '../src/modules/gastos/application/errors.js';
 import { FakeExtrator } from './fakes/fake-extrator.js';
 
 // Data no fuso de referência (UTC pode já estar no dia seguinte e virar "futuro").
@@ -29,11 +30,13 @@ async function contar(app: INestApplication): Promise<number> {
 }
 
 describe('/dev/gastos (e2e)', () => {
-  let app: INestApplication;
+  let app: INestApplication | undefined;
 
   afterEach(async () => {
+    if (!app) return;
     await app.get(DataSource).query('DELETE FROM gastos');
     await app.close();
+    app = undefined;
   });
 
   it('registra dois gastos e desfaz pelos ids', async () => {
@@ -57,6 +60,7 @@ describe('/dev/gastos (e2e)', () => {
       }),
     );
     const http = app.getHttpServer();
+    const noApp = app;
 
     const criado = await request(http)
       .post('/dev/gastos/texto')
@@ -67,11 +71,11 @@ describe('/dev/gastos (e2e)', () => {
       valorCentavos: 3250,
       valor: 'R$ 32,50',
     });
-    expect(await contar(app)).toBe(2);
+    expect(await contar(noApp)).toBe(2);
 
     const ids = criado.body.gastos.map((g: { id: string }) => g.id);
     await request(http).delete('/dev/gastos').send({ ids }).expect(204);
-    expect(await contar(app)).toBe(0);
+    expect(await contar(noApp)).toBe(0);
   });
 
   it('devolve 422 quando a IA não encontra gastos', async () => {
@@ -88,5 +92,21 @@ describe('/dev/gastos (e2e)', () => {
       .post('/dev/gastos/texto')
       .send({ texto: 'x', extra: 1 })
       .expect(400);
+  });
+
+  it('devolve 400 para id que não é UUID no DELETE', async () => {
+    app = await subir(new FakeExtrator({ textoOriginal: '', gastos: [] }));
+    await request(app.getHttpServer())
+      .delete('/dev/gastos')
+      .send({ ids: ['nao-e-uuid'] })
+      .expect(400);
+  });
+
+  it('devolve 503 quando o provedor de IA está indisponível', async () => {
+    app = await subir(new FakeExtrator(new ProvedorIndisponivelError('x')));
+    await request(app.getHttpServer())
+      .post('/dev/gastos/texto')
+      .send({ texto: 'gastei 50' })
+      .expect(503);
   });
 });
