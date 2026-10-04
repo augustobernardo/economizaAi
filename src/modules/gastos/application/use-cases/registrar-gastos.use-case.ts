@@ -18,7 +18,7 @@ export class RegistrarGastosUseCase {
 
   async executar(
     entrada: EntradaExtracao,
-  ): Promise<{ gastos: Gasto[]; textoOriginal: string }> {
+  ): Promise<{ registroId: string; gastos: Gasto[]; textoOriginal: string }> {
     const agora = this.relogio.agora();
     const { gastos: extraidos, textoOriginal } = await this.extrator.extrair(
       entrada,
@@ -30,6 +30,8 @@ export class RegistrarGastosUseCase {
       );
     }
 
+    const registroId = crypto.randomUUID();
+
     // Todos são criados (e validados) antes de salvar: registro tudo ou nada.
     const gastos = extraidos.map((e) =>
       Gasto.criar({
@@ -40,10 +42,11 @@ export class RegistrarGastosUseCase {
         origem: entrada.tipo,
         textoOriginal,
         agora,
+        registroId,
       }),
     );
     await this.repositorio.salvarVarios(gastos);
 
-    return { gastos, textoOriginal };
+    return { registroId, gastos, textoOriginal };
   }
 }

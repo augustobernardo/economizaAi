@@ -14,6 +14,7 @@ interface PropsBuilder {
   origem: OrigemGasto;
   textoOriginal: string;
   agora: Date;
+  registroId: string;
 }
 
 /** Builder fluente de `Gasto` com defaults válidos, para specs de domínio. */
@@ -26,6 +27,7 @@ export function umGasto() {
     origem: 'texto',
     textoOriginal: 'gastei 50 no mercado',
     agora: AGORA_PADRAO,
+    registroId: crypto.randomUUID(),
   };
 
   return {
@@ -49,6 +51,10 @@ export function umGasto() {
       props.agora = agora;
       return this;
     },
+    doRegistro(registroId: string) {
+      props.registroId = registroId;
+      return this;
+    },
     build(): Gasto {
       return Gasto.criar({
         valor: Dinheiro.deReais(props.valorReais),
@@ -58,6 +64,7 @@ export function umGasto() {
         origem: props.origem,
         textoOriginal: props.textoOriginal,
         agora: props.agora,
+        registroId: props.registroId,
       });
     },
   };

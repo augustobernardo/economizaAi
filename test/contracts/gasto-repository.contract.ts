@@ -18,6 +18,7 @@ function resumo(gasto: Gasto) {
     origem: gasto.origem,
     textoOriginal: gasto.textoOriginal,
     criadoEm: gasto.criadoEm.getTime(),
+    registroId: gasto.registroId,
   };
 }
 
@@ -102,33 +103,53 @@ export function testarContratoGastoRepository(
       expect(lista).toEqual([]);
     });
 
-    it('remove por ids', async () => {
-      const gastos = [
-        umGasto().comData('2026-06-10').build(),
-        umGasto().comData('2026-06-11').build(),
-        umGasto().comData('2026-06-12').build(),
-      ];
-      await repositorio.salvarVarios(gastos);
+    it('remove só os gastos do registro pedido e devolve a contagem', async () => {
+      const agora = new Date('2026-06-15T12:00:00Z');
+      const registro = crypto.randomUUID();
+      const a = umGasto().doRegistro(registro).em(agora).build();
+      const b = umGasto().doRegistro(registro).em(agora).build();
+      const outro = umGasto().em(agora).build();
+      await repositorio.salvarVarios([a, b, outro]);
 
-      await repositorio.removerPorIds([gastos[0]!.id, gastos[2]!.id]);
+      const removidos = await repositorio.removerDoRegistro(
+        registro,
+        new Date('2026-06-15T11:00:00Z'),
+      );
 
+      expect(removidos).toBe(2);
       const lista = await repositorio.listarPorPeriodo(
         '2026-06-01',
         '2026-07-01',
       );
-      expect(lista.map((g) => g.id)).toEqual([gastos[1]!.id]);
+      expect(lista.map((g) => g.id)).toEqual([outro.id]);
     });
 
-    it('remover lista vazia não faz nada', async () => {
-      await repositorio.salvarVarios([umGasto().comData('2026-06-10').build()]);
+    it('não remove gastos do registro criados antes de criadoDesde', async () => {
+      const registro = crypto.randomUUID();
+      await repositorio.salvarVarios([
+        umGasto()
+          .doRegistro(registro)
+          .em(new Date('2026-06-15T10:00:00Z'))
+          .build(),
+      ]);
 
-      await repositorio.removerPorIds([]);
+      const removidos = await repositorio.removerDoRegistro(
+        registro,
+        new Date('2026-06-15T11:00:00Z'),
+      );
 
+      expect(removidos).toBe(0);
       const lista = await repositorio.listarPorPeriodo(
         '2026-06-01',
         '2026-07-01',
       );
       expect(lista).toHaveLength(1);
+    });
+
+    it('registro inexistente devolve 0 sem lançar', async () => {
+      await expect(
+        repositorio.removerDoRegistro(crypto.randomUUID(), new Date(0)),
+      ).resolves.toBe(0);
     });
 
     it('salvar lista vazia não faz nada', async () => {
@@ -139,12 +160,6 @@ export function testarContratoGastoRepository(
         '2027-01-01',
       );
       expect(lista).toEqual([]);
-    });
-
-    it('remover id inexistente não lança', async () => {
-      await expect(
-        repositorio.removerPorIds([crypto.randomUUID()]),
-      ).resolves.toBeUndefined();
     });
   });
 }

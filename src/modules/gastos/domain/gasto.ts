@@ -5,6 +5,7 @@ import {
   DataFuturaError,
   DataInvalidaError,
   DescricaoVaziaError,
+  RegistroIdVazioError,
   ValorAcimaDoTetoError,
 } from './errors.js';
 
@@ -25,6 +26,8 @@ export interface PropsCriarGasto {
   textoOriginal: string;
   /** Instante do registro, usado para validar `dataGasto` e preencher `criadoEm`. */
   agora: Date;
+  /** Id do registro (mensagem) que criou o gasto; agrupa o Desfazer. */
+  registroId: string;
 }
 
 export interface PropsRestaurarGasto {
@@ -36,6 +39,7 @@ export interface PropsRestaurarGasto {
   origem: OrigemGasto;
   textoOriginal: string;
   criadoEm: Date;
+  registroId: string;
 }
 
 /** Formata uma data para `YYYY-MM-DD` no fuso de São Paulo. */
@@ -130,6 +134,7 @@ export class Gasto {
     public readonly origem: OrigemGasto,
     public readonly textoOriginal: string,
     public readonly criadoEm: Date,
+    public readonly registroId: string,
   ) {}
 
   /** Cria um novo gasto, validando todas as invariantes de domínio. */
@@ -138,6 +143,9 @@ export class Gasto {
     validarFormatoData(props.dataGasto);
     validarJanelaData(props.dataGasto, props.agora);
     validarTeto(props.valor);
+    if (props.registroId.trim() === '') {
+      throw new RegistroIdVazioError('registroId vazio');
+    }
 
     return new Gasto(
       crypto.randomUUID(),
@@ -148,6 +156,7 @@ export class Gasto {
       props.origem,
       props.textoOriginal,
       props.agora,
+      props.registroId,
     );
   }
 
@@ -168,6 +177,7 @@ export class Gasto {
       props.origem,
       props.textoOriginal,
       props.criadoEm,
+      props.registroId,
     );
   }
 }

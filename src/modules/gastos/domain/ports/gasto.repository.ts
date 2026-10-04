@@ -2,7 +2,8 @@ import type { Gasto } from '../gasto.js';
 
 export interface GastoRepository {
   salvarVarios(gastos: Gasto[]): Promise<void>;
-  removerPorIds(ids: string[]): Promise<void>;
+  /** Remove os gastos do registro com `criadoEm >= criadoDesde`; devolve quantos removeu. */
+  removerDoRegistro(registroId: string, criadoDesde: Date): Promise<number>;
   /** Datas civis `YYYY-MM-DD`; `inicio` inclusivo, `fimExclusivo` exclusivo; ordenado por `dataGasto`, `criadoEm`. */
   listarPorPeriodo(inicio: string, fimExclusivo: string): Promise<Gasto[]>;
 }
