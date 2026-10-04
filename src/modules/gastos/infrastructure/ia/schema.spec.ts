@@ -41,4 +41,62 @@ describe('respostaExtracaoSchema', () => {
       required: expect.arrayContaining(['gastos']),
     });
   });
+
+  it('JSON Schema enviado ao Gemini (snapshot)', () => {
+    expect(respostaExtracaoJsonSchema).toMatchInlineSnapshot(`
+      {
+        "additionalProperties": false,
+        "properties": {
+          "gastos": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "categoria": {
+                  "enum": [
+                    "alimentacao",
+                    "mercado",
+                    "transporte",
+                    "moradia",
+                    "saude",
+                    "lazer",
+                    "educacao",
+                    "assinaturas",
+                    "vestuario",
+                    "outros",
+                  ],
+                  "type": "string",
+                },
+                "dataGasto": {
+                  "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                  "type": "string",
+                },
+                "descricao": {
+                  "maxLength": 200,
+                  "minLength": 1,
+                  "type": "string",
+                },
+                "valorReais": {
+                  "minimum": 0.01,
+                  "type": "number",
+                },
+              },
+              "required": [
+                "valorReais",
+                "categoria",
+                "descricao",
+                "dataGasto",
+              ],
+              "type": "object",
+            },
+            "maxItems": 10,
+            "type": "array",
+          },
+        },
+        "required": [
+          "gastos",
+        ],
+        "type": "object",
+      }
+    `);
+  });
 });
