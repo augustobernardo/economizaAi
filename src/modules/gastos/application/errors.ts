@@ -12,5 +12,12 @@ export class ProvedorIndisponivelError extends ApplicationError {}
 /** A IA respondeu, mas fora do formato esperado. */
 export class RespostaInvalidaDaIaError extends ApplicationError {}
 
-/** A mensagem não continha nenhum gasto. */
-export class NenhumGastoEncontradoError extends ApplicationError {}
+/** A mensagem não continha nenhum gasto; `textoOriginal` é o que foi lido/ouvido. */
+export class NenhumGastoEncontradoError extends ApplicationError {
+  constructor(
+    message: string,
+    readonly textoOriginal?: string,
+  ) {
+    super(message);
+  }
+}

@@ -27,6 +27,7 @@ export class RegistrarGastosUseCase {
     if (extraidos.length === 0) {
       throw new NenhumGastoEncontradoError(
         'Nenhum gasto encontrado na mensagem',
+        textoOriginal,
       );
     }
 

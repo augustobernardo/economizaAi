@@ -89,6 +89,17 @@ describe('RegistrarGastosUseCase', () => {
     expect(await salvos()).toHaveLength(0);
   });
 
+  it('lista vazia → erro carrega o textoOriginal da extração', async () => {
+    const { useCase } = montar(resultado([], 'bom dia, tudo bem?'));
+
+    const erro = await useCase.executar(ENTRADA).catch((e: unknown) => e);
+
+    expect(erro).toBeInstanceOf(NenhumGastoEncontradoError);
+    expect((erro as NenhumGastoEncontradoError).textoOriginal).toBe(
+      'bom dia, tudo bem?',
+    );
+  });
+
   it("categoria 'supermercado' → mercado", async () => {
     const { useCase } = montar(
       resultado([extraido({ categoria: 'supermercado' })]),
