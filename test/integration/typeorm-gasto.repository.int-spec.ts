@@ -5,10 +5,11 @@ import { Dinheiro } from '../../src/modules/gastos/domain/dinheiro.js';
 import { Gasto } from '../../src/modules/gastos/domain/gasto.js';
 import { TypeOrmGastoRepository } from '../../src/modules/gastos/infrastructure/persistence/typeorm-gasto.repository.js';
 import { testarContratoGastoRepository } from '../contracts/gasto-repository.contract.js';
+import { URL_BANCO_DE_TESTE } from '../setup/url-banco-de-teste.js';
 import { umGasto } from '../builders/gasto.builder.js';
 
 const dataSource = new DataSource(
-  opcoesDoBanco(process.env.DATABASE_URL ?? ''),
+  opcoesDoBanco(process.env.DATABASE_URL ?? URL_BANCO_DE_TESTE),
 );
 const repositorio = new TypeOrmGastoRepository(dataSource);
 
@@ -52,6 +53,27 @@ describe('TypeOrmGastoRepository (banco real)', () => {
       'SELECT count(*) FROM gastos',
     );
     expect(Number(count)).toBe(0);
+  });
+
+  it.each([
+    ['categoria', { categoria: 'inexistente' }],
+    ['origem', { origem: 'fax' }],
+  ])('CHECK do banco rejeita %s inválida', async (_campo, invalido) => {
+    await limpar();
+    const base = umGasto().build();
+    const gasto = Gasto.restaurar({
+      id: base.id,
+      valor: base.valor,
+      categoria: base.categoria,
+      descricao: base.descricao,
+      dataGasto: base.dataGasto,
+      origem: base.origem,
+      textoOriginal: base.textoOriginal,
+      criadoEm: base.criadoEm,
+      ...invalido,
+    } as Parameters<typeof Gasto.restaurar>[0]);
+
+    await expect(repositorio.salvarVarios([gasto])).rejects.toThrow();
   });
 
   it('trata dados de entrada como parâmetros, nunca como SQL', async () => {
