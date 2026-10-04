@@ -37,8 +37,10 @@ export const TEXTO_AJUDA = [
 ].join('\n');
 
 export const TEXTO_START = `Olá! Eu registro seus gastos.\n\n${TEXTO_AJUDA}`;
-export const MENSAGEM_TEXTO_LONGO = 'Mensagem muito longa (máximo de 500 caracteres).';
-export const MENSAGEM_NAO_SUPORTADO = 'Por enquanto só entendo mensagens de texto.';
+export const MENSAGEM_TEXTO_LONGO =
+  'Mensagem muito longa (máximo de 500 caracteres).';
+export const MENSAGEM_NAO_SUPORTADO =
+  'Por enquanto só entendo mensagens de texto.';
 
 /** `YYYY-MM-DD` → `dd/MM`, sem `Date` (evita erro de fuso). */
 function diaMes(dataGasto: string): string {
@@ -63,8 +65,14 @@ export function formatarRegistro(gastos: readonly Gasto[]): string {
 }
 
 const MENSAGENS: [new (...args: never[]) => Error, string][] = [
-  [NenhumGastoEncontradoError, 'Não encontrei nenhum gasto. Exemplo: "gastei 25 no almoço"'],
-  [ProvedorIndisponivelError, 'A IA está indisponível agora. Tente de novo em instantes.'],
+  [
+    NenhumGastoEncontradoError,
+    'Não encontrei nenhum gasto. Exemplo: "gastei 25 no almoço"',
+  ],
+  [
+    ProvedorIndisponivelError,
+    'A IA está indisponível agora. Tente de novo em instantes.',
+  ],
   [RespostaInvalidaDaIaError, 'Não consegui entender. Pode reformular?'],
   [ValorAcimaDoTetoError, 'Valor acima do limite de R$ 50.000,00 por gasto.'],
   [ValorInvalidoError, 'Não consegui entender o valor.'],

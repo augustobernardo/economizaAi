@@ -3,7 +3,11 @@ import { criarRateLimit, MENSAGEM_RATE_LIMIT } from './rate-limit.js';
 
 function montar() {
   let agora = 0;
-  const limite = criarRateLimit({ limite: 20, janelaMs: 60_000, agora: () => agora });
+  const limite = criarRateLimit({
+    limite: 20,
+    janelaMs: 60_000,
+    agora: () => agora,
+  });
   const ctx = { from: { id: 1 }, reply: vi.fn(async () => undefined) };
   const next = vi.fn(async () => {});
   return { limite, ctx, next, avancar: (ms: number) => (agora += ms) };

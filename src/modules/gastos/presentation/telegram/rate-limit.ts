@@ -3,7 +3,8 @@ export interface CtxRateLimit {
   reply(texto: string): Promise<unknown>;
 }
 
-export const MENSAGEM_RATE_LIMIT = 'Muitas mensagens seguidas, espere um minuto.';
+export const MENSAGEM_RATE_LIMIT =
+  'Muitas mensagens seguidas, espere um minuto.';
 
 /** Janela fixa por `from.id` (SECURITY.md §3.2: proteção contra loop e cota). */
 export function criarRateLimit(opcoes: {
@@ -15,7 +16,10 @@ export function criarRateLimit(opcoes: {
   // ponytail: estado em memória, zera a cada restart; ok para um único usuário.
   const janelas = new Map<number, { inicio: number; contagem: number }>();
 
-  return async (ctx: CtxRateLimit, next: () => Promise<void>): Promise<void> => {
+  return async (
+    ctx: CtxRateLimit,
+    next: () => Promise<void>,
+  ): Promise<void> => {
     const id = ctx.from?.id;
     if (id === undefined) return next();
     const instante = agora();
@@ -26,6 +30,7 @@ export function criarRateLimit(opcoes: {
     }
     janela.contagem++;
     if (janela.contagem <= opcoes.limite) return next();
-    if (janela.contagem === opcoes.limite + 1) await ctx.reply(MENSAGEM_RATE_LIMIT);
+    if (janela.contagem === opcoes.limite + 1)
+      await ctx.reply(MENSAGEM_RATE_LIMIT);
   };
 }

@@ -18,6 +18,7 @@ import {
 import { TypeOrmGastoRepository } from './infrastructure/persistence/typeorm-gasto.repository.js';
 import { RelogioSistema } from './infrastructure/relogio-sistema.js';
 import { DevController } from './presentation/http/dev.controller.js';
+import { TelegramBot } from './presentation/telegram/telegram-bot.js';
 
 // Allowlist (fecha por padrão): NODE_ENV ausente ou desconhecido não expõe /dev/*.
 const AMBIENTES_COM_ROTAS_DE_DEV = ['development', 'test'];
@@ -28,6 +29,7 @@ const AMBIENTES_COM_ROTAS_DE_DEV = ['development', 'test'];
     ? [DevController]
     : [],
   providers: [
+    TelegramBot,
     { provide: GASTO_REPOSITORY, useClass: TypeOrmGastoRepository },
     { provide: RELOGIO, useClass: RelogioSistema },
     {

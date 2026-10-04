@@ -18,8 +18,18 @@ import { formatarRegistro, mensagemDeErro } from './formatador.js';
 describe('formatarRegistro', () => {
   it('formata dois gastos com total, acento e data dd/MM', () => {
     const texto = formatarRegistro([
-      umGasto().comValor(32.5).comDescricao('Uber').comCategoria('transporte').comData('2026-06-01').build(),
-      umGasto().comValor(18).comDescricao('Açaí').comCategoria('alimentacao').comData('2026-06-01').build(),
+      umGasto()
+        .comValor(32.5)
+        .comDescricao('Uber')
+        .comCategoria('transporte')
+        .comData('2026-06-01')
+        .build(),
+      umGasto()
+        .comValor(18)
+        .comDescricao('Açaí')
+        .comCategoria('alimentacao')
+        .comData('2026-06-01')
+        .build(),
     ]);
 
     expect(texto).toBe(
@@ -50,10 +60,22 @@ describe('formatarRegistro', () => {
 
 describe('mensagemDeErro', () => {
   it.each([
-    [new NenhumGastoEncontradoError('x'), 'Não encontrei nenhum gasto. Exemplo: "gastei 25 no almoço"'],
-    [new ProvedorIndisponivelError('x'), 'A IA está indisponível agora. Tente de novo em instantes.'],
-    [new RespostaInvalidaDaIaError('x'), 'Não consegui entender. Pode reformular?'],
-    [new ValorAcimaDoTetoError('x'), 'Valor acima do limite de R$ 50.000,00 por gasto.'],
+    [
+      new NenhumGastoEncontradoError('x'),
+      'Não encontrei nenhum gasto. Exemplo: "gastei 25 no almoço"',
+    ],
+    [
+      new ProvedorIndisponivelError('x'),
+      'A IA está indisponível agora. Tente de novo em instantes.',
+    ],
+    [
+      new RespostaInvalidaDaIaError('x'),
+      'Não consegui entender. Pode reformular?',
+    ],
+    [
+      new ValorAcimaDoTetoError('x'),
+      'Valor acima do limite de R$ 50.000,00 por gasto.',
+    ],
     [new ValorInvalidoError('x'), 'Não consegui entender o valor.'],
     [new DataFuturaError('x'), 'A data do gasto não pode ser no futuro.'],
     [new DataForaDaJanelaError('x'), 'Só registro gastos de até 1 ano atrás.'],

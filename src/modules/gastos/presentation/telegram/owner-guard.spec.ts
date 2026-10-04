@@ -12,7 +12,10 @@ function montar() {
 describe('owner guard', () => {
   it('dono passa', async () => {
     const { guard, next, logger } = montar();
-    await guard({ from: { id: DONO }, update: { update_id: 1, message: {} } }, next);
+    await guard(
+      { from: { id: DONO }, update: { update_id: 1, message: {} } },
+      next,
+    );
     expect(next).toHaveBeenCalledOnce();
     expect(logger.warn).not.toHaveBeenCalled();
   });
@@ -20,7 +23,10 @@ describe('owner guard', () => {
   it('estranho é bloqueado e logado sem conteúdo', async () => {
     const { guard, next, logger } = montar();
     await guard(
-      { from: { id: 7 }, update: { update_id: 1, message: { text: 'segredo' } } },
+      {
+        from: { id: 7 },
+        update: { update_id: 1, message: { text: 'segredo' } },
+      },
       next,
     );
     expect(next).not.toHaveBeenCalled();

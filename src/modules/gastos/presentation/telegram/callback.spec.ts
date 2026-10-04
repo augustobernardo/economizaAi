@@ -9,13 +9,21 @@ describe('callback do Desfazer', () => {
   });
 
   it('cabe no limite de 64 bytes do Telegram', () => {
-    expect(Buffer.byteLength(montarCallbackDesfazer(id))).toBeLessThanOrEqual(64);
+    expect(Buffer.byteLength(montarCallbackDesfazer(id))).toBeLessThanOrEqual(
+      64,
+    );
   });
 
-  it.each([undefined, '', 'd:', 'd:nao-e-uuid', `x:${id}`, id, `d:${id}x`, 'd:../../etc'])(
-    '%o → null',
-    (data) => {
-      expect(lerCallbackDesfazer(data)).toBeNull();
-    },
-  );
+  it.each([
+    undefined,
+    '',
+    'd:',
+    'd:nao-e-uuid',
+    `x:${id}`,
+    id,
+    `d:${id}x`,
+    'd:../../etc',
+  ])('%o → null', (data) => {
+    expect(lerCallbackDesfazer(data)).toBeNull();
+  });
 });
