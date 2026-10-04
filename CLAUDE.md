@@ -136,11 +136,11 @@ recomeçou do zero em 2026-10-03.
 | 0 — Passo 0 e scaffold do zero | ✅ |
 | 1 — Ferramental e configuração | ✅ |
 | 2 — Domínio (TDD) | ✅ |
-| 3 — Persistência | 🔧 próxima |
-| 4 — Caso de uso RegistrarGastos | ⏳ |
-| 5 — Adapter Gemini | ⏳ |
+| 3 — Persistência | ✅ |
+| 4 — Caso de uso RegistrarGastos | ✅ |
+| 5 — Adapter Gemini | ✅ (texto; test:ia manual ainda não rodado) |
 | 6 — Adapter Groq + Fallback | ⏸️ adiada (só Gemini por enquanto) |
-| 7 — Telegram texto | ⏳ |
+| 7 — Telegram texto | 🔧 próxima |
 | 8 — Telegram áudio | ⏳ |
 | 9 — (removida) | ❌ |
 | 10 — Exportação CSV/MD | ⏳ |
