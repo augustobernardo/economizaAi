@@ -10,6 +10,8 @@ export default async function setup(): Promise<void> {
   await dataSource.initialize();
   try {
     await dataSource.runMigrations();
+    // Suítes em sequência (integration -> e2e) não podem herdar linhas da anterior.
+    await dataSource.query('DELETE FROM gastos');
   } finally {
     await dataSource.destroy();
   }
