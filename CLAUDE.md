@@ -47,7 +47,7 @@ importam tanto quanto a funcionalidade.
 
 - NestJS + TypeScript (strict), **pnpm**
 - TypeORM + Postgres **17**, **migrations** (nunca `synchronize`)
-- Telegraf em **long polling** (a VPS não tem domínio — webhook não é opção)
+- grammY em **long polling** (a VPS não tem domínio — webhook não é opção)
 - IA para **extrair**: **Gemini** (principal; entende áudio nativamente,
   structured output). Fallback para **Groq** (Whisper + LLM) adiado: por ora só Gemini.
   Hermes foi avaliado e descartado (sem áudio, free tier menor).
@@ -68,7 +68,7 @@ modules/gastos/
 ```
 
 **Regras invioláveis:**
-- `domain` não importa Nest, TypeORM, Telegraf nem SDKs de IA.
+- `domain` não importa Nest, TypeORM, grammY nem SDKs de IA.
 - Handlers e controllers não têm regra de negócio — só traduzem entrada/saída.
 - Trocar provedor de IA ou formato de exportação = nova classe, sem mexer em caso de uso.
 - **Não adicionar** CQRS, event bus, mediator ou abstrações sem uso concreto.
@@ -144,8 +144,8 @@ recomeçou do zero em 2026-10-03.
 | 4 — Caso de uso RegistrarGastos | ✅ |
 | 5 — Adapter Gemini | ✅ (texto; test:ia manual ainda não rodado) |
 | 6 — Adapter Groq + Fallback | ⏸️ adiada (só Gemini por enquanto) |
-| 7 — Telegram texto | 🔧 próxima |
-| 8 — Telegram áudio | ⏳ |
+| 7 — Telegram texto | ✅ (grammY; Desfazer por registroId) |
+| 8 — Telegram áudio | 🔧 próxima |
 | 9 — (removida) | ❌ |
 | 10 — Exportação CSV/MD | ⏳ |
 | 11 — Docker + Easypanel | ⏳ (Postgres de produção já existe no Easypanel) |
