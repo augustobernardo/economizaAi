@@ -55,7 +55,7 @@ export class TelegramBot implements OnModuleInit, OnModuleDestroy {
     bot.command('start', (ctx) => ctx.reply(TEXTO_START));
     bot.command('ajuda', (ctx) => ctx.reply(TEXTO_AJUDA));
     bot.on('message:text', (ctx) => tratarTexto(ctx, deps));
-    bot.callbackQuery(/^d:/, (ctx) => tratarDesfazer(ctx, deps));
+    bot.on('callback_query:data', (ctx) => tratarDesfazer(ctx, deps));
     bot.on('message', (ctx) => tratarNaoSuportado(ctx));
     // Só nome e mensagem: erros de rede podem carregar a URL com o token na stack.
     bot.catch((err) => {

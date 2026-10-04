@@ -113,6 +113,20 @@ describe('tratarTexto', () => {
     expect(d.logger.error).not.toHaveBeenCalled();
   });
 
+  it('log de erro desconhecido não vaza a message do erro', async () => {
+    const d = deps({
+      registrar: {
+        executar: vi.fn(async () => {
+          throw new Error('falhou com: meu texto privado');
+        }),
+      },
+    });
+    await tratarTexto(ctxTexto('meu texto privado'), d);
+    expect(JSON.stringify(vi.mocked(d.logger.error).mock.calls)).not.toContain(
+      'meu texto privado',
+    );
+  });
+
   it('erro desconhecido é logado sem o texto do usuário', async () => {
     const d = deps({
       registrar: {
@@ -176,5 +190,26 @@ describe('tratarDesfazer', () => {
       'Erro inesperado. Tente de novo.',
     );
     expect(d.logger.error).toHaveBeenCalledOnce();
+  });
+
+  it('falha ao editar a mensagem ainda responde Desfeito', async () => {
+    const d = deps();
+    const ctx = ctxCallback(montarCallbackDesfazer(REGISTRO));
+    ctx.editMessageText.mockRejectedValue(new Error('message too old'));
+    await tratarDesfazer(ctx, d);
+    expect(ctx.answerCallbackQuery).toHaveBeenCalledWith('Desfeito');
+    expect(ctx.answerCallbackQuery).not.toHaveBeenCalledWith(
+      'Erro inesperado. Tente de novo.',
+    );
+  });
+
+  it('falha ao tirar o botão ainda responde o callback', async () => {
+    const d = deps({ desfazer: { executar: vi.fn(async () => 0) } });
+    const ctx = ctxCallback(montarCallbackDesfazer(REGISTRO));
+    ctx.editMessageReplyMarkup.mockRejectedValue(new Error('rede'));
+    await tratarDesfazer(ctx, d);
+    expect(ctx.answerCallbackQuery).toHaveBeenCalledWith(
+      'Nada para desfazer (expirado ou já desfeito)',
+    );
   });
 });

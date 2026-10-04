@@ -15,7 +15,7 @@ export const MAX_CARACTERES_TEXTO = 500;
 export interface DepsTelegram {
   registrar: Pick<RegistrarGastosUseCase, 'executar'>;
   desfazer: Pick<DesfazerRegistroUseCase, 'executar'>;
-  logger: { error(mensagem: string, stack?: string): void };
+  logger: { error(mensagem: string): void };
 }
 
 export interface CtxTexto {
@@ -43,10 +43,9 @@ function logarSeInesperado(
   onde: string,
 ): void {
   if (ehErroConhecido(erro)) return;
-  // Nunca incluir o texto do usuário no log.
+  // Só o nome: message e stack podem conter o texto do usuário.
   deps.logger.error(
     `Erro inesperado em ${onde}: ${erro instanceof Error ? erro.name : typeof erro}`,
-    erro instanceof Error ? erro.stack : undefined,
   );
 }
 
@@ -90,22 +89,28 @@ export async function tratarDesfazer(
     await ctx.answerCallbackQuery('Ação inválida');
     return;
   }
+  let removidos: number;
   try {
-    const removidos = await deps.desfazer.executar(registroId);
-    if (removidos > 0) {
-      const original = ctx.callbackQuery.message?.text ?? '';
-      await ctx.editMessageText(`${original}\n\n↩️ Registro desfeito`.trim());
-      await ctx.answerCallbackQuery('Desfeito');
-    } else {
-      await ctx.editMessageReplyMarkup();
-      await ctx.answerCallbackQuery(
-        'Nada para desfazer (expirado ou já desfeito)',
-      );
-    }
+    removidos = await deps.desfazer.executar(registroId);
   } catch (erro) {
     logarSeInesperado(erro, deps, 'tratarDesfazer');
     await ctx.answerCallbackQuery(mensagemDeErro(erro));
+    return;
   }
+  // O registro já foi decidido: falha ao editar a mensagem não pode virar "erro".
+  try {
+    if (removidos > 0) {
+      const original = ctx.callbackQuery.message?.text ?? '';
+      await ctx.editMessageText(`${original}\n\n↩️ Registro desfeito`.trim());
+    } else {
+      await ctx.editMessageReplyMarkup();
+    }
+  } catch (erro) {
+    logarSeInesperado(erro, deps, 'tratarDesfazer');
+  }
+  await ctx.answerCallbackQuery(
+    removidos > 0 ? 'Desfeito' : 'Nada para desfazer (expirado ou já desfeito)',
+  );
 }
 
 export async function tratarNaoSuportado(ctx: {
