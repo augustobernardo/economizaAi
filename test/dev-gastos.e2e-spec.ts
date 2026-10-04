@@ -3,19 +3,21 @@ import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { DataSource } from 'typeorm';
 import { AppModule } from '../src/app.module.js';
-import { EXTRATOR_DE_GASTOS } from '../src/modules/gastos/application/ports/extrator-de-gastos.js';
+import { INTERPRETADOR_DE_MENSAGEM } from '../src/modules/gastos/application/ports/interpretador-de-mensagem.js';
 import { ProvedorIndisponivelError } from '../src/modules/gastos/application/errors.js';
-import { FakeExtrator } from './fakes/fake-extrator.js';
+import { FakeInterpretador } from './fakes/fake-interpretador.js';
 
 // Data no fuso de referência (UTC pode já estar no dia seguinte e virar "futuro").
 const hoje = new Intl.DateTimeFormat('sv-SE', {
   timeZone: 'America/Sao_Paulo',
 }).format(new Date());
 
-async function subir(extrator: FakeExtrator): Promise<INestApplication> {
+async function subir(
+  interpretador: FakeInterpretador,
+): Promise<INestApplication> {
   const modulo = await Test.createTestingModule({ imports: [AppModule] })
-    .overrideProvider(EXTRATOR_DE_GASTOS)
-    .useValue(extrator)
+    .overrideProvider(INTERPRETADOR_DE_MENSAGEM)
+    .useValue(interpretador)
     .compile();
   const app = modulo.createNestApplication();
   await app.init();
@@ -41,7 +43,8 @@ describe('/dev/gastos (e2e)', () => {
 
   it('registra dois gastos e desfaz pelo registroId', async () => {
     app = await subir(
-      new FakeExtrator({
+      new FakeInterpretador({
+        intencao: 'registrar',
         textoOriginal: 'uber e mercado',
         gastos: [
           {
@@ -66,6 +69,7 @@ describe('/dev/gastos (e2e)', () => {
       .post('/dev/gastos/texto')
       .send({ texto: 'uber e mercado' })
       .expect(201);
+    expect(criado.body.tipo).toBe('registro');
     expect(criado.body.gastos).toHaveLength(2);
     expect(criado.body.gastos[0]).toMatchObject({
       valorCentavos: 3250,
@@ -83,7 +87,13 @@ describe('/dev/gastos (e2e)', () => {
   });
 
   it('devolve 422 quando a IA não encontra gastos', async () => {
-    app = await subir(new FakeExtrator({ textoOriginal: 'oi', gastos: [] }));
+    app = await subir(
+      new FakeInterpretador({
+        intencao: 'registrar',
+        textoOriginal: 'oi',
+        gastos: [],
+      }),
+    );
     await request(app.getHttpServer())
       .post('/dev/gastos/texto')
       .send({ texto: 'oi' })
@@ -91,7 +101,13 @@ describe('/dev/gastos (e2e)', () => {
   });
 
   it('devolve 400 para campo extra no corpo', async () => {
-    app = await subir(new FakeExtrator({ textoOriginal: '', gastos: [] }));
+    app = await subir(
+      new FakeInterpretador({
+        intencao: 'registrar',
+        textoOriginal: '',
+        gastos: [],
+      }),
+    );
     await request(app.getHttpServer())
       .post('/dev/gastos/texto')
       .send({ texto: 'x', extra: 1 })
@@ -99,7 +115,13 @@ describe('/dev/gastos (e2e)', () => {
   });
 
   it('devolve 400 para registroId que não é UUID no DELETE', async () => {
-    app = await subir(new FakeExtrator({ textoOriginal: '', gastos: [] }));
+    app = await subir(
+      new FakeInterpretador({
+        intencao: 'registrar',
+        textoOriginal: '',
+        gastos: [],
+      }),
+    );
     await request(app.getHttpServer())
       .delete('/dev/gastos')
       .send({ registroId: 'nao-e-uuid' })
@@ -107,7 +129,13 @@ describe('/dev/gastos (e2e)', () => {
   });
 
   it('devolve 400 para o contrato antigo { ids }', async () => {
-    app = await subir(new FakeExtrator({ textoOriginal: '', gastos: [] }));
+    app = await subir(
+      new FakeInterpretador({
+        intencao: 'registrar',
+        textoOriginal: '',
+        gastos: [],
+      }),
+    );
     await request(app.getHttpServer())
       .delete('/dev/gastos')
       .send({ ids: [crypto.randomUUID()] })
@@ -115,7 +143,9 @@ describe('/dev/gastos (e2e)', () => {
   });
 
   it('devolve 503 quando o provedor de IA está indisponível', async () => {
-    app = await subir(new FakeExtrator(new ProvedorIndisponivelError('x')));
+    app = await subir(
+      new FakeInterpretador(new ProvedorIndisponivelError('x')),
+    );
     await request(app.getHttpServer())
       .post('/dev/gastos/texto')
       .send({ texto: 'gastei 50' })

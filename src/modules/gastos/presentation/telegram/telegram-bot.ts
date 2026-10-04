@@ -8,12 +8,18 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { Bot } from 'grammy';
 import { DesfazerRegistroUseCase } from '../../application/use-cases/desfazer-registro.use-case.js';
-import { RegistrarGastosUseCase } from '../../application/use-cases/registrar-gastos.use-case.js';
+import { ExportarGastosUseCase } from '../../application/use-cases/exportar-gastos.use-case.js';
+import { ListarUltimosGastosUseCase } from '../../application/use-cases/listar-ultimos-gastos.use-case.js';
+import { ProcessarMensagemUseCase } from '../../application/use-cases/processar-mensagem.use-case.js';
+import { ResumirGastosUseCase } from '../../application/use-cases/resumir-gastos.use-case.js';
 import { MAX_BYTES_AUDIO } from '../limites.js';
 import { baixarArquivo, TIMEOUT_DOWNLOAD_MS } from './download.js';
 import { TEXTO_AJUDA, TEXTO_START } from './formatador.js';
 import {
-  tratarDesfazer,
+  tratarCallback,
+  tratarComandoExportar,
+  tratarComandoResumo,
+  tratarComandoUltimos,
   tratarNaoSuportado,
   tratarTexto,
   tratarVoz,
@@ -30,8 +36,14 @@ export class TelegramBot implements OnModuleInit, OnModuleDestroy {
 
   constructor(
     @Inject(ConfigService) private readonly config: ConfigService,
-    @Inject(RegistrarGastosUseCase)
-    private readonly registrar: RegistrarGastosUseCase,
+    @Inject(ProcessarMensagemUseCase)
+    private readonly processar: ProcessarMensagemUseCase,
+    @Inject(ExportarGastosUseCase)
+    private readonly exportar: ExportarGastosUseCase,
+    @Inject(ResumirGastosUseCase)
+    private readonly resumir: ResumirGastosUseCase,
+    @Inject(ListarUltimosGastosUseCase)
+    private readonly listarUltimos: ListarUltimosGastosUseCase,
     @Inject(DesfazerRegistroUseCase)
     private readonly desfazer: DesfazerRegistroUseCase,
   ) {}
@@ -43,7 +55,10 @@ export class TelegramBot implements OnModuleInit, OnModuleDestroy {
     const token = this.config.getOrThrow<string>('TELEGRAM_BOT_TOKEN');
     const bot = new Bot(token);
     const deps: DepsTelegram = {
-      registrar: this.registrar,
+      processar: this.processar,
+      exportar: this.exportar,
+      resumir: this.resumir,
+      listarUltimos: this.listarUltimos,
       desfazer: this.desfazer,
       logger: this.logger,
       // A URL carrega o token: existe só aqui e nunca é logada.
@@ -64,9 +79,12 @@ export class TelegramBot implements OnModuleInit, OnModuleDestroy {
     bot.use(criarRateLimit({ limite: 20, janelaMs: 60_000 }));
     bot.command('start', (ctx) => ctx.reply(TEXTO_START));
     bot.command('ajuda', (ctx) => ctx.reply(TEXTO_AJUDA));
+    bot.command('exportar', (ctx) => tratarComandoExportar(ctx, deps));
+    bot.command('resumo', (ctx) => tratarComandoResumo(ctx, deps));
+    bot.command('ultimos', (ctx) => tratarComandoUltimos(ctx, deps));
     bot.on('message:text', (ctx) => tratarTexto(ctx, deps));
     bot.on('message:voice', (ctx) => tratarVoz(ctx, deps));
-    bot.on('callback_query:data', (ctx) => tratarDesfazer(ctx, deps));
+    bot.on('callback_query:data', (ctx) => tratarCallback(ctx, deps));
     bot.on('message', (ctx) => tratarNaoSuportado(ctx));
     // Só o nome: message e stack podem conter texto do usuário ou a URL com o token.
     bot.catch((err) => {

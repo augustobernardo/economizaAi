@@ -25,6 +25,10 @@ describe('/dev/* em produção (e2e)', () => {
         .post('/dev/gastos/texto')
         .send({ texto: 'gastei 50' })
         .expect(404);
+      await request(app.getHttpServer())
+        .get('/dev/exportar')
+        .query({ inicio: '2026-01-01', fim: '2026-01-31', formato: 'csv' })
+        .expect(404);
     } finally {
       await app.close();
     }

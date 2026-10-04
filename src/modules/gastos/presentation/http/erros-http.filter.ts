@@ -9,6 +9,8 @@ import type { Response } from 'express';
 import { DomainError } from '../../../../shared/domain/domain.error.js';
 import {
   NenhumGastoEncontradoError,
+  NenhumGastoNoPeriodoError,
+  NenhumGastoRegistradoError,
   ProvedorIndisponivelError,
   RespostaInvalidaDaIaError,
 } from '../../application/errors.js';
@@ -20,6 +22,8 @@ const MENSAGEM_422 = 'Não foi possível registrar os gastos dessa mensagem.';
   // @Catch exige construtor concreto; DomainError é abstrata.
   DomainError as unknown as Type<Error>,
   NenhumGastoEncontradoError,
+  NenhumGastoNoPeriodoError,
+  NenhumGastoRegistradoError,
   RespostaInvalidaDaIaError,
   ProvedorIndisponivelError,
 )
@@ -37,6 +41,12 @@ export class ErrosHttpFilter implements ExceptionFilter<Error> {
   }
 
   private traduzir(erro: Error): [number, string] {
+    if (
+      erro instanceof NenhumGastoNoPeriodoError ||
+      erro instanceof NenhumGastoRegistradoError
+    ) {
+      return [404, 'Nenhum gasto encontrado no período informado.'];
+    }
     if (erro instanceof RespostaInvalidaDaIaError) {
       return [502, 'A IA devolveu uma resposta inválida. Tente novamente.'];
     }
