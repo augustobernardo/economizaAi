@@ -4,10 +4,10 @@ import {
   RespostaInvalidaDaIaError,
 } from '../../application/errors.js';
 import type {
-  EntradaExtracao,
-  ExtratorDeGastos,
-  ResultadoExtracao,
-} from '../../application/ports/extrator-de-gastos.js';
+  EntradaMensagem,
+  Interpretacao,
+  InterpretadorDeMensagem,
+} from '../../application/ports/interpretador-de-mensagem.js';
 import { z } from 'zod';
 import {
   INSTRUCAO_AUDIO,
@@ -15,15 +15,16 @@ import {
   mensagemDoUsuario,
 } from './prompt.js';
 import {
-  respostaExtracaoAudioJsonSchema,
-  respostaExtracaoAudioSchema,
-  respostaExtracaoJsonSchema,
-  respostaExtracaoSchema,
+  respostaInterpretacaoAudioJsonSchema,
+  respostaInterpretacaoAudioSchema,
+  respostaInterpretacaoJsonSchema,
+  respostaInterpretacaoSchema,
+  type RespostaInterpretacao,
 } from './schema.js';
 
 export type ModelosGemini = Pick<GoogleGenAI['models'], 'generateContent'>;
 
-export const MIMES_DE_AUDIO_SUPORTADOS = ['audio/ogg'] as const;
+const MIMES_DE_AUDIO_SUPORTADOS: readonly string[] = ['audio/ogg'];
 
 export const TIMEOUT_GEMINI_MS = 20_000;
 
@@ -34,58 +35,62 @@ export function criarModelosGemini(apiKey: string): ModelosGemini {
   }).models;
 }
 
-export class GeminiExtrator implements ExtratorDeGastos {
+export class GeminiInterpretador implements InterpretadorDeMensagem {
   constructor(
     private readonly modelos: ModelosGemini,
     private readonly modelo: string,
   ) {}
 
-  async extrair(
-    entrada: EntradaExtracao,
+  interpretar(
+    entrada: EntradaMensagem,
     dataReferencia: Date,
-  ): Promise<ResultadoExtracao> {
-    if (entrada.tipo === 'texto') {
-      const texto = await this.chamar(
-        mensagemDoUsuario(entrada.texto),
-        instrucaoDeSistema(dataReferencia, 'texto'),
-        respostaExtracaoJsonSchema,
-      );
-      return {
-        gastos: interpretar(texto, respostaExtracaoSchema).gastos,
-        textoOriginal: entrada.texto,
-      };
-    }
+  ): Promise<Interpretacao> {
+    return entrada.tipo === 'texto'
+      ? this.interpretarTexto(entrada.texto, dataReferencia)
+      : this.interpretarAudio(entrada.audio, entrada.mimeType, dataReferencia);
+  }
 
-    if (
-      !(MIMES_DE_AUDIO_SUPORTADOS as readonly string[]).includes(
-        entrada.mimeType,
-      )
-    ) {
+  private async interpretarTexto(
+    texto: string,
+    dataReferencia: Date,
+  ): Promise<Interpretacao> {
+    const bruto = await this.chamar(
+      mensagemDoUsuario(texto),
+      instrucaoDeSistema(dataReferencia, 'texto'),
+      respostaInterpretacaoJsonSchema,
+    );
+    return paraInterpretacao(
+      interpretar(bruto, respostaInterpretacaoSchema),
+      texto,
+    );
+  }
+
+  private async interpretarAudio(
+    audio: Buffer,
+    mimeType: string,
+    dataReferencia: Date,
+  ): Promise<Interpretacao> {
+    if (!MIMES_DE_AUDIO_SUPORTADOS.includes(mimeType)) {
       throw new Error('Formato de áudio não suportado');
     }
-    const texto = await this.chamar(
+    const bruto = await this.chamar(
       [
         {
           role: 'user',
           parts: [
-            {
-              inlineData: {
-                mimeType: entrada.mimeType,
-                data: entrada.audio.toString('base64'),
-              },
-            },
+            { inlineData: { mimeType, data: audio.toString('base64') } },
             { text: INSTRUCAO_AUDIO },
           ],
         },
       ],
       instrucaoDeSistema(dataReferencia, 'audio'),
-      respostaExtracaoAudioJsonSchema,
+      respostaInterpretacaoAudioJsonSchema,
     );
-    const { gastos, transcricao } = interpretar(
-      texto,
-      respostaExtracaoAudioSchema,
+    const { transcricao, ...resposta } = interpretar(
+      bruto,
+      respostaInterpretacaoAudioSchema,
     );
-    return { gastos, textoOriginal: transcricao };
+    return paraInterpretacao(resposta, transcricao);
   }
 
   private async chamar(
@@ -109,6 +114,18 @@ export class GeminiExtrator implements ExtratorDeGastos {
       throw indisponivelOuOriginal(erro);
     }
   }
+}
+
+function paraInterpretacao(
+  { intencao, gastos, inicio, fim }: RespostaInterpretacao,
+  textoOriginal: string,
+): Interpretacao {
+  if (intencao === 'registrar') return { intencao, gastos, textoOriginal };
+  if (intencao === 'listarUltimos') return { intencao, textoOriginal };
+  if (inicio === null || fim === null) {
+    throw new RespostaInvalidaDaIaError('A IA não informou o período');
+  }
+  return { intencao, inicio, fim, textoOriginal };
 }
 
 function interpretar<T>(texto: string, schema: z.ZodType<T>): T {

@@ -12,7 +12,7 @@ const LINHAS_AUDIO = [
 ];
 
 export const INSTRUCAO_AUDIO =
-  'Extraia os gastos do áudio anexado e transcreva a fala.';
+  'Interprete o áudio anexado e transcreva a fala.';
 
 export function instrucaoDeSistema(
   dataReferencia: Date,
@@ -27,14 +27,28 @@ export function instrucaoDeSistema(
   }).format(dataReferencia);
 
   return [
-    'Você extrai gastos pessoais de mensagens em português do Brasil.',
+    'Você interpreta mensagens sobre gastos pessoais em português do Brasil.',
     `Hoje é ${diaDaSemana}, ${data} (formato AAAA-MM-DD, fuso America/Sao_Paulo). Use essa data para resolver "hoje", "ontem", "anteontem" e dias da semana.`,
     ...(tipo === 'texto' ? LINHAS_TEXTO : LINHAS_AUDIO),
-    'Devolva JSON com a lista "gastos". Cada gasto tem: valorReais (número positivo, em reais), categoria, descricao (curta) e dataGasto (AAAA-MM-DD).',
+    'Primeiro classifique a intenção, no campo "intencao":',
+    '- "exportar": pede planilha, relatório, arquivo ou exportação ("exportar", "planilha", "relatório", "arquivo");',
+    '- "resumir": pergunta o total ou pede resumo ("quanto gastei", "resumo");',
+    '- "listarUltimos": pede os últimos gastos registrados ("últimos gastos");',
+    '- "registrar": qualquer outro caso, inclusive quando não houver gasto algum.',
+    'Devolva JSON com "intencao", "gastos" (lista), "inicio" e "fim" (AAAA-MM-DD ou null).',
+    'Fora de "registrar", "gastos" é a lista vazia. Em "registrar" e "listarUltimos", "inicio" e "fim" são null.',
+    'Em "exportar" e "resumir", "inicio" e "fim" são o período pedido, com estas regras:',
+    '- sem período informado, vale do dia 1 do mês atual até hoje;',
+    '- mês sem ano é o mais recente que não esteja no futuro;',
+    '- "dia X" faz inicio = fim;',
+    '- "de X a Y" vai de X até Y;',
+    '- intervalos relativos ("semana passada", "mês passado", "últimos 7 dias") são calculados a partir de hoje;',
+    '- nunca devolva datas futuras.',
+    'Em "registrar", cada gasto tem: valorReais (número positivo, em reais), categoria, descricao (curta) e dataGasto (AAAA-MM-DD).',
     `Categorias permitidas: ${CATEGORIAS.join(', ')}. Se nenhuma servir, use "outros".`,
     'Uma mensagem pode ter vários gastos; devolva um item para cada um.',
     'Se a mensagem não descrever nenhum gasto, devolva a lista vazia: {"gastos": []}.',
-    'Se a data não for informada, use a data de hoje.',
+    'Se a data do gasto não for informada, use a data de hoje.',
   ].join('\n');
 }
 
