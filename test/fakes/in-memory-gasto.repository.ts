@@ -32,6 +32,16 @@ export class InMemoryGastoRepository implements GastoRepository {
       );
   }
 
+  async listarUltimos(limite: number): Promise<Gasto[]> {
+    return [...this.gastos]
+      .sort(
+        (x, y) =>
+          y.criadoEm.getTime() - x.criadoEm.getTime() ||
+          y.id.localeCompare(x.id),
+      )
+      .slice(0, limite);
+  }
+
   limpar(): void {
     this.gastos = [];
   }

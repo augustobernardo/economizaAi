@@ -173,5 +173,22 @@ export function testarContratoGastoRepository(
       );
       expect(lista).toEqual([]);
     });
+
+    it('listarUltimos devolve os mais recentes por criadoEm, até o limite', async () => {
+      const em = (h: string) =>
+        umGasto()
+          .em(new Date(`2026-06-15T${h}:00:00Z`))
+          .build();
+      const [a, b, c] = [em('10'), em('12'), em('11')];
+      await repositorio.salvarVarios([a, b, c]);
+
+      const ultimos = await repositorio.listarUltimos(2);
+
+      expect(ultimos.map((g) => g.id)).toEqual([b.id, c.id]);
+    });
+
+    it('listarUltimos com banco vazio devolve lista vazia', async () => {
+      await expect(repositorio.listarUltimos(10)).resolves.toEqual([]);
+    });
   });
 }
