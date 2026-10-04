@@ -16,6 +16,13 @@ export interface ResumoDeGastos {
   maiorGasto: Gasto;
 }
 
+export const plural = (n: number, singular: string, plural: string): string =>
+  `${n} ${n === 1 ? singular : plural}`;
+
+/** `50` → `50%`, `33.3` → `33,3%`. */
+export const formatarPercentual = (n: number): string =>
+  `${String(n).replace('.', ',')}%`;
+
 /** Resume uma lista não vazia de gastos; lista vazia é erro de programação. */
 export function resumir(gastos: readonly Gasto[]): ResumoDeGastos {
   const [primeiro] = gastos;

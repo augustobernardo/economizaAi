@@ -64,13 +64,19 @@ export class ProcessarMensagemUseCase {
       case 'exportar':
         return {
           tipo: 'exportacao',
-          ...(await this.exportar.executar(interpretacao)),
+          ...(await this.exportar.executar({
+            inicio: interpretacao.inicio,
+            fim: interpretacao.fim,
+          })),
           textoOriginal,
         };
       case 'resumir':
         return {
           tipo: 'resumo',
-          ...(await this.resumir.executar(interpretacao)),
+          ...(await this.resumir.executar({
+            inicio: interpretacao.inicio,
+            fim: interpretacao.fim,
+          })),
           textoOriginal,
         };
       case 'listarUltimos':

@@ -20,8 +20,13 @@ import {
 } from '../../domain/errors.js';
 import type { Gasto } from '../../domain/gasto.js';
 import type { Periodo } from '../../domain/periodo.js';
-import type { ResumoDeGastos } from '../../domain/resumo.js';
 import {
+  formatarPercentual,
+  plural,
+  type ResumoDeGastos,
+} from '../../domain/resumo.js';
+import {
+  BYTES_POR_MB,
   MAX_BYTES_AUDIO,
   MAX_CARACTERES_TEXTO,
   MAX_DURACAO_AUDIO_S,
@@ -45,7 +50,7 @@ export const TEXTO_AJUDA = [
 export const TEXTO_START = `Olá! Eu registro seus gastos.\n\n${TEXTO_AJUDA}`;
 export const MENSAGEM_TEXTO_LONGO = `Mensagem muito longa (máximo de ${MAX_CARACTERES_TEXTO} caracteres).`;
 export const MENSAGEM_AUDIO_LONGO = `Áudio muito longo (máximo de ${MAX_DURACAO_AUDIO_S} s).`;
-export const MENSAGEM_AUDIO_GRANDE = `Áudio muito grande (máximo de ${MAX_BYTES_AUDIO / 1_048_576} MB).`;
+export const MENSAGEM_AUDIO_GRANDE = `Áudio muito grande (máximo de ${MAX_BYTES_AUDIO / BYTES_POR_MB} MB).`;
 export const MENSAGEM_NAO_SUPORTADO =
   'Por enquanto só entendo mensagens de texto e de voz.';
 
@@ -71,20 +76,10 @@ export function formatarRegistro(gastos: readonly Gasto[]): string {
   return [titulo, ...linhas, `Total: ${total.formatar()}`].join('\n');
 }
 
-export function formatarRegistroDeAudio(
-  transcricao: string,
-  gastos: readonly Gasto[],
-): string {
-  return comTranscricao(transcricao, formatarRegistro(gastos));
-}
-
 /** Prefixa o texto com a transcrição; transcrição vazia não gera a linha. */
 export function comTranscricao(transcricao: string, texto: string): string {
   return transcricao ? `🎙️ "${transcricao}"\n\n${texto}` : texto;
 }
-
-const plural = (n: number, singular: string, pluralStr: string) =>
-  n === 1 ? `1 ${singular}` : `${n} ${pluralStr}`;
 
 export function formatarResumo(
   periodo: Periodo,
@@ -96,7 +91,7 @@ export function formatarResumo(
     `Total: ${resumo.total.formatar()} (${plural(resumo.quantidade, 'gasto', 'gastos')})`,
     ...resumo.porCategoria.map(
       (c) =>
-        `• ${ROTULOS_CATEGORIA[c.categoria]}: ${c.total.formatar()} (${String(c.percentual).replace('.', ',')}%)`,
+        `• ${ROTULOS_CATEGORIA[c.categoria]}: ${c.total.formatar()} (${formatarPercentual(c.percentual)})`,
     ),
     `Maior gasto: ${m.valor.formatar()} — ${m.descricao} (${ROTULOS_CATEGORIA[m.categoria]}) — ${diaMes(m.dataGasto)}`,
   ].join('\n');

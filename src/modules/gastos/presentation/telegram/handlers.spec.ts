@@ -49,11 +49,13 @@ const ARQUIVOS = [
     nomeArquivo: 'economizaai-2026-08.csv',
     conteudo: Buffer.from('csv'),
     mimeType: 'text/csv; charset=utf-8',
+    formato: 'csv' as const,
   },
   {
     nomeArquivo: 'economizaai-2026-08.md',
     conteudo: Buffer.from('md'),
     mimeType: 'text/markdown; charset=utf-8',
+    formato: 'md' as const,
   },
 ];
 
@@ -481,6 +483,22 @@ describe('respostas por tipo de resultado', () => {
     );
   });
 
+  it('voz → legenda longa é truncada em 1024 caracteres com reticências', async () => {
+    const d = deps({
+      processar: processando({
+        ...exportacao,
+        textoOriginal: 'a'.repeat(2000),
+      }),
+    });
+    const ctx = ctxVoz({ duration: 3 });
+
+    await tratarVoz(ctx, d);
+
+    const legenda = documentosEnviados(ctx)[0]!.caption!;
+    expect(legenda.length).toBeLessThanOrEqual(1024);
+    expect(legenda.endsWith('…')).toBe(true);
+  });
+
   it('voz → resumo responde com a transcrição e o resumo', async () => {
     const resumo = resumir(GASTOS);
     const d = deps({
@@ -669,7 +687,7 @@ describe('tratarCallback', () => {
     expect(ctx.answerCallbackQuery).toHaveBeenCalledWith('Desfeito');
   });
 
-  it('erro na exportação responde no callback e no chat', async () => {
+  it('erro na exportação avisa no chat sem responder o callback de novo', async () => {
     const d = deps({
       exportar: falhando(new NenhumGastoNoPeriodoError(AGOSTO)),
     });
@@ -679,22 +697,23 @@ describe('tratarCallback', () => {
 
     await tratarCallback(ctx, d);
 
-    expect(ctx.answerCallbackQuery).toHaveBeenCalledWith(mensagem);
+    expect(ctx.answerCallbackQuery).toHaveBeenCalledOnce();
+    expect(ctx.answerCallbackQuery).toHaveBeenCalledWith('Gerando arquivos…');
     expect(ctx.reply).toHaveBeenCalledWith(mensagem);
     expect(ctx.replyWithDocument).not.toHaveBeenCalled();
   });
 
-  it('segunda resposta ao callback falhando ainda avisa no chat', async () => {
-    const d = deps({
-      exportar: falhando(new NenhumGastoNoPeriodoError(AGOSTO)),
-    });
+  it('primeira resposta ao callback rejeitando não impede a exportação', async () => {
+    const d = deps();
     const ctx = ctxCallback('e:0');
-    ctx.answerCallbackQuery
-      .mockResolvedValueOnce(true)
-      .mockRejectedValueOnce(new Error('query is too old'));
+    ctx.answerCallbackQuery.mockRejectedValueOnce(
+      new Error('query is too old'),
+    );
 
     await tratarCallback(ctx, d);
 
-    expect(ctx.reply).toHaveBeenCalledOnce();
+    expect(d.exportar.executar).toHaveBeenCalledWith({ mesRelativo: 0 });
+    expect(documentosEnviados(ctx)).toHaveLength(2);
+    expect(ctx.reply).not.toHaveBeenCalled();
   });
 });

@@ -6,15 +6,14 @@ import { ROTULOS_CATEGORIA } from '../../domain/categoria.js';
 import { formatarDataBr } from '../../domain/data-civil.js';
 import type { Gasto } from '../../domain/gasto.js';
 import type { Periodo } from '../../domain/periodo.js';
-import { resumir } from '../../domain/resumo.js';
+import { formatarPercentual, plural, resumir } from '../../domain/resumo.js';
 
+/** Texto do usuário vira literal: sem quebrar a tabela nem virar link, imagem ou HTML. */
 const celula = (texto: string) =>
-  texto.replace(/\r?\n|\r/g, ' ').replaceAll('|', '\\|');
-const plural = (n: number) => `${n} ${n === 1 ? 'gasto' : 'gastos'}`;
-const pct = (n: number) => `${n.toLocaleString('pt-BR')}%`;
+  texto.replace(/\r?\n|\r/g, ' ').replace(/[\\|[\]()<>!`]/g, '\\$&');
 
 export class MarkdownExportador implements Exportador {
-  readonly formato = 'md';
+  readonly formato = 'md' as const;
 
   gerar(gastos: readonly Gasto[], periodo: Periodo): ArquivoExportado {
     const r = resumir(gastos);
@@ -22,7 +21,7 @@ export class MarkdownExportador implements Exportador {
     const linhas = [
       `# Gastos — ${periodo.descrever()}`,
       '',
-      `**Total:** ${r.total.formatar()} (${plural(r.quantidade)})`,
+      `**Total:** ${r.total.formatar()} (${plural(r.quantidade, 'gasto', 'gastos')})`,
       '',
       '## Por categoria',
       '',
@@ -30,7 +29,7 @@ export class MarkdownExportador implements Exportador {
       '|---|---|---|',
       ...r.porCategoria.map((c) => {
         const nome = ROTULOS_CATEGORIA[c.categoria];
-        return `| ${nome} | ${c.total.formatar()} | ${pct(c.percentual)} |`;
+        return `| ${nome} | ${c.total.formatar()} | ${formatarPercentual(c.percentual)} |`;
       }),
       '',
       `**Maior gasto:** ${celula(maior.descricao)} — ${maior.valor.formatar()}` +
@@ -51,6 +50,7 @@ export class MarkdownExportador implements Exportador {
       nomeArquivo: `economizaai-${periodo.slug}.md`,
       conteudo: Buffer.from(linhas.join('\n'), 'utf8'),
       mimeType: 'text/markdown; charset=utf-8',
+      formato: this.formato,
     };
   }
 }

@@ -123,9 +123,7 @@ export class DevController {
       inicio: query.inicio,
       fim: query.fim,
     });
-    const arquivo = arquivos.find((a) =>
-      a.nomeArquivo.endsWith(`.${query.formato}`),
-    );
+    const arquivo = arquivos.find((a) => a.formato === query.formato);
     if (!arquivo) throw new Error(`Exportador ${query.formato} ausente`);
     res
       .set({

@@ -22,6 +22,7 @@ describe.skipIf(!apiKey || !modelo)('GeminiInterpretador (API real)', () => {
   const hoje = new Date();
   const extrair = async (texto: string) => {
     const r = await interpretador.interpretar({ tipo: 'texto', texto }, hoje);
+    expect(r.intencao).toBe('registrar');
     return r.intencao === 'registrar' ? r.gastos : [];
   };
 

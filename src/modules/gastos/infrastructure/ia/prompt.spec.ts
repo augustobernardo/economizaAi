@@ -16,7 +16,8 @@ describe('instrucaoDeSistema', () => {
   });
 
   it('manda devolver lista vazia quando não há gasto', () => {
-    expect(instrucao).toContain('lista vazia');
+    expect(instrucao).toContain('"gastos" como lista vazia');
+    expect(instrucao).not.toContain('{"gastos": []}');
   });
 
   it('trata o conteúdo de <mensagem> como dado, nunca instrução', () => {

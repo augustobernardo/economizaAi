@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { umGasto } from '../../../../test/builders/gasto.builder.js';
-import { resumir } from './resumo.js';
+import { formatarPercentual, plural, resumir } from './resumo.js';
 
 describe('resumir', () => {
   const gastos = [
@@ -60,5 +60,24 @@ describe('resumir', () => {
 
   it('lista vazia é erro de programação', () => {
     expect(() => resumir([])).toThrow();
+  });
+});
+
+describe('plural', () => {
+  it('usa o singular só para 1', () => {
+    expect(plural(1, 'gasto', 'gastos')).toBe('1 gasto');
+    expect(plural(0, 'gasto', 'gastos')).toBe('0 gastos');
+    expect(plural(12, 'gasto', 'gastos')).toBe('12 gastos');
+  });
+});
+
+describe('formatarPercentual', () => {
+  it.each([
+    [50, '50%'],
+    [33.3, '33,3%'],
+    [100, '100%'],
+    [0.5, '0,5%'],
+  ])('%d → %s', (n, esperado) => {
+    expect(formatarPercentual(n)).toBe(esperado);
   });
 });

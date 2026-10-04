@@ -20,7 +20,7 @@ import {
 } from '../../domain/errors.js';
 import { Periodo } from '../../domain/periodo.js';
 import { resumir } from '../../domain/resumo.js';
-import { MAX_BYTES_AUDIO } from '../limites.js';
+import { BYTES_POR_MB, MAX_BYTES_AUDIO } from '../limites.js';
 import { DownloadFalhouError } from './download.js';
 import {
   comTranscricao,
@@ -29,7 +29,6 @@ import {
   legendaExportacao,
   MENSAGEM_AUDIO_GRANDE,
   formatarRegistro,
-  formatarRegistroDeAudio,
   formatarSemGastoNoAudio,
   MENSAGEM_AUDIO_LONGO,
   MENSAGEM_NAO_SUPORTADO,
@@ -111,17 +110,6 @@ describe('mensagemDeErro', () => {
 });
 
 describe('áudio', () => {
-  it('formatarRegistroDeAudio mostra a transcrição antes da lista', () => {
-    const texto = formatarRegistroDeAudio('gastei 10 no mercado', [
-      umGasto().comValor(10).build(),
-    ]);
-    expect(texto.split('\n').slice(0, 3)).toEqual([
-      '🎙️ "gastei 10 no mercado"',
-      '',
-      '✅ 1 gasto registrado',
-    ]);
-  });
-
   it('formatarSemGastoNoAudio mostra o que foi ouvido', () => {
     expect(formatarSemGastoNoAudio('bom dia')).toBe(
       '🎙️ Ouvi: "bom dia"\nNão encontrei nenhum gasto.',
@@ -172,6 +160,20 @@ describe('formatadores da etapa 10', () => {
         '• alimentação: R$ 30,00 (30%)',
         'Maior gasto: R$ 70,00 — Luz (moradia) — 10/08',
       ].join('\n'),
+    );
+  });
+
+  it('resumo com percentual fracionário usa vírgula', () => {
+    const gastos = (['mercado', 'lazer', 'saude'] as const).map((c) =>
+      umGasto()
+        .comValor(10)
+        .comCategoria(c)
+        .comData('2026-08-05')
+        .em(HOJE)
+        .build(),
+    );
+    expect(formatarResumo(P_MES, resumir(gastos))).toContain(
+      'R$ 10,00 (33,3%)',
     );
   });
 
@@ -238,13 +240,11 @@ describe('formatadores da etapa 10', () => {
 
   it('transcrição vazia omite a linha do microfone', () => {
     expect(comTranscricao('', 'X')).toBe('X');
-    const gastos = [umGasto().build()];
-    expect(formatarRegistroDeAudio('', gastos)).toBe(formatarRegistro(gastos));
   });
 
   it('MENSAGEM_AUDIO_GRANDE deriva de MAX_BYTES_AUDIO', () => {
     expect(MENSAGEM_AUDIO_GRANDE).toBe(
-      `Áudio muito grande (máximo de ${MAX_BYTES_AUDIO / 1_048_576} MB).`,
+      `Áudio muito grande (máximo de ${MAX_BYTES_AUDIO / BYTES_POR_MB} MB).`,
     );
   });
 });

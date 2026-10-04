@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { umGasto } from '../../../../../test/builders/gasto.builder.js';
 import { FakeExportador } from '../../../../../test/fakes/fake-exportador.js';
 import { FakeInterpretador } from '../../../../../test/fakes/fake-interpretador.js';
@@ -135,4 +135,28 @@ describe('ProcessarMensagemUseCase', () => {
       dataReferencia: AGORA,
     });
   });
+
+  it.each([
+    ['exportar', ExportarGastosUseCase],
+    ['resumir', ResumirGastosUseCase],
+  ] as const)(
+    '%s recebe só inicio e fim da interpretação',
+    async (intencao, Classe) => {
+      const espiao = vi.spyOn(Classe.prototype, 'executar');
+      const { useCase } = await montar({
+        intencao,
+        inicio: '2026-10-01',
+        fim: '2026-10-04',
+        textoOriginal: 'x',
+      });
+
+      await useCase.executar(TEXTO);
+
+      expect(espiao).toHaveBeenCalledWith({
+        inicio: '2026-10-01',
+        fim: '2026-10-04',
+      });
+      espiao.mockRestore();
+    },
+  );
 });

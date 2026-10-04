@@ -16,6 +16,7 @@ export class FakeExportador implements Exportador {
       nomeArquivo: `fake-${periodo.slug}.${this.formato}`,
       conteudo: Buffer.from(String(gastos.length)),
       mimeType: 'text/plain',
+      formato: this.formato,
     };
   }
 }

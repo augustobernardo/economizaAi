@@ -1,16 +1,16 @@
 import { z } from 'zod';
 import { CATEGORIAS } from '../../domain/categoria.js';
 
+const data = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
+
 const gastoSchema = z
   .object({
     valorReais: z.number().min(0.01),
     categoria: z.enum(CATEGORIAS),
     descricao: z.string().trim().min(1).max(200),
-    dataGasto: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    dataGasto: data,
   })
   .strict();
-
-const data = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 
 export const respostaInterpretacaoSchema = z
   .object({

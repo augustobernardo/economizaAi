@@ -14,6 +14,7 @@ describe('CsvExportador', () => {
   it('nome, mime e BOM', () => {
     const arq = new CsvExportador().gerar([gastoCom('x')], PERIODO);
     expect(arq.nomeArquivo).toBe('economizaai-2026-08.csv');
+    expect(arq.formato).toBe('csv');
     expect(arq.mimeType).toBe('text/csv; charset=utf-8');
     expect(arq.conteudo.subarray(0, 3)).toEqual(
       Buffer.from([0xef, 0xbb, 0xbf]),

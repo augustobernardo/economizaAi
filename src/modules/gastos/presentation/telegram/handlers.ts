@@ -112,6 +112,15 @@ async function responderErro(
   await ctx.reply(mensagemDeErro(erro));
 }
 
+/** Limite do Telegram para legenda de documento. */
+const MAX_LEGENDA = 1024;
+
+function cortarLegenda(legenda: string): string {
+  return legenda.length > MAX_LEGENDA
+    ? `${legenda.slice(0, MAX_LEGENDA - 1)}…`
+    : legenda;
+}
+
 async function enviarDocumentos(
   ctx: CtxResposta,
   arquivos: readonly ArquivoExportado[],
@@ -120,7 +129,7 @@ async function enviarDocumentos(
   for (const [i, arquivo] of arquivos.entries()) {
     await ctx.replyWithDocument(
       new InputFile(arquivo.conteudo, arquivo.nomeArquivo),
-      i === 0 ? { caption: legenda } : {},
+      i === 0 ? { caption: cortarLegenda(legenda) } : {},
     );
   }
 }
@@ -330,8 +339,9 @@ async function tratarExportarDoBotao(
   mesRelativo: 0 | -1,
   deps: DepsTelegram,
 ): Promise<void> {
-  // Responde antes de gerar: tira o spinner do botão.
-  await ctx.answerCallbackQuery('Gerando arquivos…');
+  // Responde antes de gerar: tira o spinner do botão. É cosmético: um callback
+  // velho ("query is too old") não pode abortar a exportação.
+  await ctx.answerCallbackQuery('Gerando arquivos…').catch(() => undefined);
   try {
     const { periodo, quantidade, arquivos } = await deps.exportar.executar({
       mesRelativo,
@@ -343,10 +353,8 @@ async function tratarExportarDoBotao(
     );
   } catch (erro) {
     logarSeInesperado(erro, deps, 'tratarCallback');
-    const mensagem = mensagemDeErro(erro);
-    // O callback já foi respondido: o Telegram costuma recusar a segunda resposta.
-    await ctx.answerCallbackQuery(mensagem).catch(() => undefined);
-    await ctx.reply(mensagem);
+    // O callback já foi respondido: o erro vai para o chat.
+    await ctx.reply(mensagemDeErro(erro));
   }
 }
 

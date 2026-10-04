@@ -30,6 +30,7 @@ describe('MarkdownExportador', () => {
     const arq = gerar();
     expect(arq.nomeArquivo).toBe('economizaai-2026-08.md');
     expect(arq.mimeType).toBe('text/markdown; charset=utf-8');
+    expect(arq.formato).toBe('md');
   });
 
   it('título, total, categorias e maior gasto', () => {
@@ -53,5 +54,35 @@ describe('MarkdownExportador', () => {
 
   it('escapa pipe e quebra de linha na descrição', () => {
     expect(texto([gasto(10, 'mercado', 'a|b\nc')])).toContain('a\\|b c');
+  });
+
+  it('escapa sintaxe de link, imagem e HTML na descrição', () => {
+    const t = texto([
+      gasto(10, 'mercado', '[a](javascript:x)'),
+      gasto(5, 'lazer', '<img src=x>'),
+      gasto(1, 'outros', '!`c`\\'),
+    ]);
+    expect(t).toContain('\\[a\\]\\(javascript:x\\)');
+    expect(t).toContain('\\<img src=x\\>');
+    expect(t).toContain('\\!\\`c\\`\\\\');
+    expect(t).not.toContain('[a](');
+    expect(t).not.toMatch(/[^\\]<img/);
+  });
+
+  it('soma dos totais por categoria = total geral', () => {
+    const t = texto([
+      gasto(10, 'mercado', 'a'),
+      gasto(20, 'lazer', 'b'),
+      gasto(70, 'moradia', 'c'),
+    ]);
+    const centavos = (v: string) => Number(v.replace(/\D/g, ''));
+    const secao = t.split('## Por categoria')[1]!.split('**Maior gasto')[0]!;
+    const totais = [...secao.matchAll(/\| (R\$ [\d.,]+) \|/g)].map((m) =>
+      centavos(m[1]!),
+    );
+    const total = centavos(t.match(/\*\*Total:\*\* (R\$ [\d.,]+)/)![1]!);
+    expect(totais).toHaveLength(3);
+    expect(totais.reduce((a, b) => a + b, 0)).toBe(total);
+    expect(total).toBe(10000);
   });
 });

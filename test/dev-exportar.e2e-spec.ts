@@ -115,8 +115,13 @@ describe('/dev/exportar (e2e)', () => {
     }).expect(400);
   });
 
-  it('início no futuro → 422', async () => {
-    await exportar({ inicio: amanha, fim: amanha, formato: 'csv' }).expect(422);
+  it('início no futuro → 400 com mensagem genérica', async () => {
+    const res = await exportar({
+      inicio: amanha,
+      fim: amanha,
+      formato: 'csv',
+    }).expect(400);
+    expect(res.body.message).toBe('Período inválido.');
   });
 
   it('POST /dev/gastos/texto com pedido de exportação devolve os arquivos em base64', async () => {

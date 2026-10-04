@@ -5,6 +5,7 @@ export interface ArquivoExportado {
   nomeArquivo: string;
   conteudo: Buffer;
   mimeType: string;
+  formato: 'csv' | 'md';
 }
 
 export interface Exportador {

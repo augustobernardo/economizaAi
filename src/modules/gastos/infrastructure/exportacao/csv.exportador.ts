@@ -19,7 +19,7 @@ export function celulaCsv(valor: string): string {
 }
 
 export class CsvExportador implements Exportador {
-  readonly formato = 'csv';
+  readonly formato = 'csv' as const;
 
   gerar(gastos: readonly Gasto[], periodo: Periodo): ArquivoExportado {
     const linhas = [
@@ -38,6 +38,7 @@ export class CsvExportador implements Exportador {
       nomeArquivo: `economizaai-${periodo.slug}.csv`,
       conteudo: Buffer.from(`${BOM}${linhas.join('\r\n')}\r\n`, 'utf8'),
       mimeType: 'text/csv; charset=utf-8',
+      formato: this.formato,
     };
   }
 }

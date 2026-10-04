@@ -47,7 +47,7 @@ export function instrucaoDeSistema(
     'Em "registrar", cada gasto tem: valorReais (número positivo, em reais), categoria, descricao (curta) e dataGasto (AAAA-MM-DD).',
     `Categorias permitidas: ${CATEGORIAS.join(', ')}. Se nenhuma servir, use "outros".`,
     'Uma mensagem pode ter vários gastos; devolva um item para cada um.',
-    'Se a mensagem não descrever nenhum gasto, devolva a lista vazia: {"gastos": []}.',
+    'Se a mensagem não descrever nenhum gasto, devolva "gastos" como lista vazia.',
     'Se a data do gasto não for informada, use a data de hoje.',
   ].join('\n');
 }

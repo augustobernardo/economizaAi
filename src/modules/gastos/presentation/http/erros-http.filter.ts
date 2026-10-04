@@ -14,6 +14,11 @@ import {
   ProvedorIndisponivelError,
   RespostaInvalidaDaIaError,
 } from '../../application/errors.js';
+import {
+  PeriodoFuturoError,
+  PeriodoInvertidoError,
+  PeriodoLongoDemaisError,
+} from '../../domain/errors.js';
 
 const MENSAGEM_422 = 'Não foi possível registrar os gastos dessa mensagem.';
 
@@ -41,11 +46,18 @@ export class ErrosHttpFilter implements ExceptionFilter<Error> {
   }
 
   private traduzir(erro: Error): [number, string] {
-    if (
-      erro instanceof NenhumGastoNoPeriodoError ||
-      erro instanceof NenhumGastoRegistradoError
-    ) {
+    if (erro instanceof NenhumGastoNoPeriodoError) {
       return [404, 'Nenhum gasto encontrado no período informado.'];
+    }
+    if (erro instanceof NenhumGastoRegistradoError) {
+      return [404, 'Nenhum gasto registrado.'];
+    }
+    if (
+      erro instanceof PeriodoFuturoError ||
+      erro instanceof PeriodoInvertidoError ||
+      erro instanceof PeriodoLongoDemaisError
+    ) {
+      return [400, 'Período inválido.'];
     }
     if (erro instanceof RespostaInvalidaDaIaError) {
       return [502, 'A IA devolveu uma resposta inválida. Tente novamente.'];
