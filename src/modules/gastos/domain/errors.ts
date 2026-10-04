@@ -20,3 +20,12 @@ export class DataForaDaJanelaError extends DomainError {}
 
 /** `registroId` vazio: todo gasto pertence a um registro (uma mensagem). */
 export class RegistroIdVazioError extends DomainError {}
+
+/** Início do período é posterior ao fim. */
+export class PeriodoInvertidoError extends DomainError {}
+
+/** Início do período é posterior a hoje em `America/Sao_Paulo`. */
+export class PeriodoFuturoError extends DomainError {}
+
+/** Período maior que `MAX_DIAS_PERIODO` dias. */
+export class PeriodoLongoDemaisError extends DomainError {}

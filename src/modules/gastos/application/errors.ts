@@ -1,3 +1,5 @@
+import type { Periodo } from '../domain/periodo.js';
+
 /** Erros da camada de aplicação: falhas de portas externas, não violações de invariante. */
 abstract class ApplicationError extends Error {
   constructor(message: string) {
@@ -11,6 +13,16 @@ export class ProvedorIndisponivelError extends ApplicationError {}
 
 /** A IA respondeu, mas fora do formato esperado. */
 export class RespostaInvalidaDaIaError extends ApplicationError {}
+
+/** Nenhum gasto no período pedido; carrega o período para a mensagem ao usuário. */
+export class NenhumGastoNoPeriodoError extends ApplicationError {
+  constructor(readonly periodo: Periodo) {
+    super(`Nenhum gasto encontrado em ${periodo.descrever()}`);
+  }
+}
+
+/** Ainda não há nenhum gasto registrado. */
+export class NenhumGastoRegistradoError extends ApplicationError {}
 
 /** A mensagem não continha nenhum gasto; `textoOriginal` é o que foi lido/ouvido. */
 export class NenhumGastoEncontradoError extends ApplicationError {

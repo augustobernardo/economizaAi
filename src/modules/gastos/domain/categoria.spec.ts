@@ -1,5 +1,21 @@
 import { describe, expect, it } from 'vitest';
-import { CATEGORIAS, normalizarCategoria } from './categoria.js';
+import {
+  CATEGORIAS,
+  normalizarCategoria,
+  ROTULOS_CATEGORIA,
+} from './categoria.js';
+
+describe('ROTULOS_CATEGORIA', () => {
+  it('tem um rótulo para cada categoria, com acento quando cabe', () => {
+    expect(Object.keys(ROTULOS_CATEGORIA).sort()).toEqual(
+      [...CATEGORIAS].sort(),
+    );
+    expect(ROTULOS_CATEGORIA.alimentacao).toBe('alimentação');
+    expect(ROTULOS_CATEGORIA.saude).toBe('saúde');
+    expect(ROTULOS_CATEGORIA.educacao).toBe('educação');
+    expect(ROTULOS_CATEGORIA.vestuario).toBe('vestuário');
+  });
+});
 
 describe('CATEGORIAS', () => {
   it('é a lista fechada de categorias do roadmap', () => {

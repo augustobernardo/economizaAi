@@ -3,7 +3,7 @@ import {
   ProvedorIndisponivelError,
   RespostaInvalidaDaIaError,
 } from '../../application/errors.js';
-import type { Categoria } from '../../domain/categoria.js';
+import { ROTULOS_CATEGORIA } from '../../domain/categoria.js';
 import { Dinheiro } from '../../domain/dinheiro.js';
 import {
   DataForaDaJanelaError,
@@ -16,19 +16,6 @@ import {
 import type { Gasto } from '../../domain/gasto.js';
 import { MAX_CARACTERES_TEXTO, MAX_DURACAO_AUDIO_S } from '../limites.js';
 import { DownloadFalhouError } from './download.js';
-
-const ROTULOS: Record<Categoria, string> = {
-  alimentacao: 'alimentação',
-  mercado: 'mercado',
-  transporte: 'transporte',
-  moradia: 'moradia',
-  saude: 'saúde',
-  lazer: 'lazer',
-  educacao: 'educação',
-  assinaturas: 'assinaturas',
-  vestuario: 'vestuário',
-  outros: 'outros',
-};
 
 export const TEXTO_AJUDA = [
   'Me mande seus gastos em texto, por exemplo:',
@@ -60,7 +47,7 @@ export function formatarRegistro(gastos: readonly Gasto[]): string {
       : `✅ ${gastos.length} gastos registrados`;
   const linhas = gastos.map(
     (g) =>
-      `• ${g.valor.formatar()} — ${g.descricao} (${ROTULOS[g.categoria]}) — ${diaMes(g.dataGasto)}`,
+      `• ${g.valor.formatar()} — ${g.descricao} (${ROTULOS_CATEGORIA[g.categoria]}) — ${diaMes(g.dataGasto)}`,
   );
   const total = Dinheiro.deCentavos(
     gastos.reduce((soma, g) => soma + g.valor.centavos, 0),
