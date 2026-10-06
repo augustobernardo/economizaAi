@@ -71,9 +71,10 @@ jobs:
       - name: Escaneia a imagem (trivy, CRITICAL com correção)
         run: |
           img=$(sed -n 's/^FROM //p' .github/tools/trivy/Dockerfile)
-          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
-            "$img" \
-            image --severity CRITICAL --ignore-unfixed --exit-code 1 --no-progress economizaai:ci
+          docker save "economizaai:ci" -o "$RUNNER_TEMP/image.tar"
+          docker run --rm -v "$RUNNER_TEMP/image.tar:/in/image.tar:ro" "$img" \
+            image --input /in/image.tar --severity CRITICAL --ignore-unfixed --exit-code 1 --no-progress
+          rm -f "$RUNNER_TEMP/image.tar"
 
   gitleaks:
     name: gitleaks
@@ -124,9 +125,10 @@ jobs:
       - name: Escaneia a imagem (trivy, CRITICAL com correção)
         run: |
           img=$(sed -n 's/^FROM //p' .github/tools/trivy/Dockerfile)
-          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
-            "$img" \
-            image --severity CRITICAL --ignore-unfixed --exit-code 1 --no-progress "${IMAGE}:${GITHUB_SHA}"
+          docker save "${IMAGE}:${GITHUB_SHA}" -o "$RUNNER_TEMP/image.tar"
+          docker run --rm -v "$RUNNER_TEMP/image.tar:/in/image.tar:ro" "$img" \
+            image --input /in/image.tar --severity CRITICAL --ignore-unfixed --exit-code 1 --no-progress
+          rm -f "$RUNNER_TEMP/image.tar"
 
       - name: Login no GHCR
         env:
@@ -151,7 +153,7 @@ jobs:
       - name: Atesta a proveniência
         uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
         with:
-          subject-name: ghcr.io/augustobernardo/economizaai
+          subject-name: ${{ env.IMAGE }}
           subject-digest: ${{ steps.push.outputs.digest }}
           push-to-registry: true
 
