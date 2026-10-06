@@ -102,7 +102,7 @@ export class TelegramBot implements OnModuleInit, OnModuleDestroy {
       })
       .catch((erro: unknown) => {
         this.logger.error(
-          `Long polling do Telegram parou: ${erro instanceof Error ? erro.message : String(erro)}`,
+          `Long polling do Telegram parou: ${erro instanceof Error ? erro.name : typeof erro}`,
         );
       });
     this.bot = bot;
