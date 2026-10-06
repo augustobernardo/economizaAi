@@ -278,6 +278,7 @@ recomeçou do zero em 2026-10-03.
 | 9 — (removida) | ❌ |
 | 10 — Exportação, resumo e últimos | ✅ (texto, voz e comandos) |
 | 11 — Docker + Easypanel | 🔧 pipeline pronto (Dockerfile, CI com trivy, deploy após CI verde); falta a configuração do dono e o 1º deploy |
+| 12 — Mensagens HTML, /resumo por mês, avaliação da IA | ✅ validada no bot de dev em 06/10 (HTML, Desfazer, voz, /resumo); prompt v5 em uso; falta commit |
 
 Infraestrutura de produção endurecida e com backup em 04/10/2026
 (ver `SECURITY.md` local, seção 7). `SECURITY.md`, `ROADMAP.md`,
