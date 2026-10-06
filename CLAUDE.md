@@ -92,6 +92,11 @@ modules/gastos/
    Adapters de SDK externos: testar com mock na fronteira; não gastar cota de IA no CI.
 4. Validar com **curl** (endpoints `/dev/*`, só fora de produção), `psql` ou Telegram.
 5. **Conventional commits** em português, pequenos e incrementais.
+   **Branches:** `develop` é a homologação; tudo entra nela e só vai para
+   `main` por PR `develop → main` com o CI verde. Branch extra só quando
+   necessário (ex.: uma feature longa), saindo da `develop` e com nome direto
+   sobre o que muda (`entradas-e-faturas`, não `feat/etapa-12`). **Proibido
+   branch de docs:** docs vão direto na `develop`. Branch mesclado é apagado.
 6. Nunca quebrar comportamento existente; nunca commitar `.env` nem logar segredos.
 7. Atualizar a seção "Status" abaixo ao concluir cada etapa.
 8. **Dúvidas antes de agir:** usar a skill `brainstorming` para tirar **todas**
