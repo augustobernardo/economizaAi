@@ -16,6 +16,7 @@ os especialistas ficam em `.claude/agents/` e não criam outros subagentes
 | `implementador-tdd` | `domain/` e `application/` com TDD estrito |
 | `integrador-infra` | `infrastructure/` e `presentation/` (TypeORM, IA, Telegram, exportadores) |
 | `revisor-codigo` | Revisão read-only: Clean Code, SOLID, fronteiras, testes |
+| `seguranca` | Gate de segurança read-only: AppSec, DevSecOps, CI/CD, container, infra (documental), OSINT, OWASP Top 10:2025 e LLM |
 | `devops` | Docker, CI, Dependabot, documentação de deploy |
 
 Fluxo por etapa: Passo 0 → implementação → revisão → gate de segurança
@@ -226,14 +227,14 @@ badges de workflow). O README é a vitrine do portfólio: responde **o que
 
 | | Local | Produção (Easypanel) |
 |---|---|---|
-| Onde o Nest roda | Direto no host (fora do Docker) | Container no projeto `economiza-ai` |
-| Host do banco | `localhost:5432` | `<HOST_INTERNO_DO_BANCO>:5432` (só resolve dentro do Easypanel) |
-| Banco | `economizaai` (+ `economizaai_test`) | `economiza-ai` |
+| Onde o Nest roda | Direto no host (fora do Docker) | Container no Easypanel |
+| Host do banco | `localhost:5432` | host interno do Easypanel (só resolve lá dentro; ver `SECURITY.md` local) |
+| Banco | `economizaai` (+ `economizaai_test`) | banco de produção (ver `SECURITY.md` local) |
 | Bot do Telegram | bot de **dev** (token próprio) | bot de **produção** |
 
-> Produção fica atrás de Cloudflare (DNS, proxy e Access) e do firewall da
-> <PROVEDOR_DA_VPS>; só SSH e as faixas da Cloudflare entram. Detalhes e riscos aceitos
-> em `SECURITY.md`, seção 7. Agentes não acessam a infraestrutura.
+> Produção fica atrás de Cloudflare (DNS, proxy e Access) e do firewall do
+> provedor. Detalhes e riscos aceitos ficam no `SECURITY.md` (local, fora do
+> git), seção 7. Agentes não acessam a infraestrutura.
 
 - Nomes de serviço do docker-compose só resolvem entre containers, nunca do
   processo Node no host.
@@ -267,7 +268,8 @@ recomeçou do zero em 2026-10-03.
 | 8 — Telegram áudio | ✅ (só voz; transcrição pelo Gemini) |
 | 9 — (removida) | ❌ |
 | 10 — Exportação, resumo e últimos | ✅ (texto, voz e comandos) |
-| 11 — Docker + Easypanel | 🔧 próxima (Postgres de produção já existe no Easypanel) |
+| 11 — Docker + Easypanel | 🔧 pipeline pronto (Dockerfile, CI com trivy, deploy após CI verde); falta a configuração do dono e o 1º deploy |
 
-Infraestrutura de produção endurecida e com backup no R2 em 04/10/2026
-(ver `SECURITY.md` seção 7).
+Infraestrutura de produção endurecida e com backup em 04/10/2026
+(ver `SECURITY.md` local, seção 7). `SECURITY.md`, `ROADMAP.md`,
+`PROMPT_INICIAL.md`, `docs/deploy.md` e `docs/superpowers/` são só locais.
