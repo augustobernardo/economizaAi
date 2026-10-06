@@ -40,3 +40,7 @@ pnpm-debug.log*
 # temp directories
 tmp/
 temp/
+
+# Ferramentas locais do agente (não versionadas)
+.claude/skills/
+.claude/worktrees/

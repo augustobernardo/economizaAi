@@ -1,5 +1,6 @@
 import { defineConfig } from 'vitest/config';
 import tsconfigPaths from 'vite-tsconfig-paths';
+import { URL_BANCO_DE_TESTE } from './test/setup/url-banco-de-teste.js';
 
 export default defineConfig({
   plugins: [tsconfigPaths()],
@@ -7,6 +8,10 @@ export default defineConfig({
     globals: true,
     root: './',
     include: ['**/*.e2e-spec.ts'],
+    globalSetup: ['test/setup/migrar-banco-de-teste.ts'],
+    fileParallelism: false,
+    testTimeout: 30_000,
+    hookTimeout: 30_000,
     // Env sintético para o ConfigModule.forRoot({ validate: validarEnv })
     // (src/app.module.ts) passar sem depender de um .env real: o Nest
     // decora e valida o ambiente já na importação do AppModule, antes de
@@ -16,8 +21,7 @@ export default defineConfig({
     // Valores óbviamente falsos; nunca aponta para serviços reais.
     env: {
       NODE_ENV: 'test',
-      DATABASE_URL:
-        'postgresql://usuario-fake:senha-fake@localhost:5432/db-fake',
+      DATABASE_URL: process.env.DATABASE_URL ?? URL_BANCO_DE_TESTE,
       TELEGRAM_BOT_TOKEN: 'token-fake-e2e',
       TELEGRAM_OWNER_ID: '1',
       GEMINI_API_KEY: 'gemini-fake-e2e',
