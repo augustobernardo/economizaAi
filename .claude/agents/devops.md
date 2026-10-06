@@ -13,7 +13,7 @@ Leia `CLAUDE.md`, a etapa no `ROADMAP.md` e as seções 3.8, 3.9, 3.10 e 7 do
 `SECURITY.md`.
 
 ## Responsabilidades
-- `Dockerfile` multi-stage (`node:22-alpine`, pnpm via corepack), imagem final
+- `Dockerfile` multi-stage (`node:24-alpine` por digest, pnpm via corepack), imagem final
   mínima, usuário não-root, `TZ=America/Sao_Paulo`, `.dockerignore` completo.
 - `docker-compose.yml` de desenvolvimento (Postgres 17 + banco de teste).
 - `.github/workflows/ci.yml`: install com `--frozen-lockfile`, lint, testes,

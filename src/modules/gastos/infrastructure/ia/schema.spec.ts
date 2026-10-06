@@ -62,11 +62,39 @@ describe('respostaInterpretacaoSchema', () => {
       { ...base, gastos: [{ ...gasto, descricao: '   ' }] },
     ],
     [
+      'descrição com caractere bidi (U+202E)',
+      { ...base, gastos: [{ ...gasto, descricao: 'Uber‮soicnif' }] },
+    ],
+    [
+      'descrição com caractere de controle',
+      { ...base, gastos: [{ ...gasto, descricao: 'Uber\u0000' }] },
+    ],
+    [
+      'descrição com zero-width space',
+      { ...base, gastos: [{ ...gasto, descricao: 'Ub​er' }] },
+    ],
+    [
       'dataGasto em formato BR',
       { ...base, gastos: [{ ...gasto, dataGasto: '01/10/2026' }] },
     ],
   ])('recusa %s', (_nome, entrada) => {
     expect(respostaInterpretacaoSchema.safeParse(entrada).success).toBe(false);
+  });
+
+  it('aceita descrição em português com acentos e pontuação', () => {
+    const entrada = {
+      ...base,
+      gastos: [{ ...gasto, descricao: 'Pão de açúcar - café (2x), R$ 5,50!' }],
+    };
+    expect(respostaInterpretacaoSchema.safeParse(entrada).success).toBe(true);
+  });
+
+  it('aceita emoji composto (ZWJ U+200D)', () => {
+    const entrada = {
+      ...base,
+      gastos: [{ ...gasto, descricao: 'Passeio 👨\u200D👩\u200D👧' }],
+    };
+    expect(respostaInterpretacaoSchema.safeParse(entrada).success).toBe(true);
   });
 
   it('JSON Schema não tem $schema e exige intencao, gastos, inicio e fim', () => {
@@ -122,6 +150,17 @@ describe('respostaInterpretacaoAudioSchema', () => {
     expect(respostaInterpretacaoAudioJsonSchema).not.toHaveProperty('$schema');
     expect(respostaInterpretacaoAudioJsonSchema.required).toContain(
       'transcricao',
+    );
+  });
+});
+
+describe('JSON Schema enviado ao Gemini', () => {
+  it('não carrega escapes Unicode (\\p{...}) que a API pode recusar', () => {
+    expect(JSON.stringify(respostaInterpretacaoJsonSchema)).not.toContain(
+      '\\\\p{',
+    );
+    expect(JSON.stringify(respostaInterpretacaoAudioJsonSchema)).not.toContain(
+      '\\\\p{',
     );
   });
 });
