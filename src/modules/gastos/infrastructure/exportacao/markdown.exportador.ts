@@ -12,10 +12,10 @@ import { formatarPercentual, plural, resumir } from '../../domain/resumo.js';
 const celula = (texto: string) =>
   texto
     .replace(/\r?\n|\r/g, ' ')
-    .replace(/[\\|[\]()<>!`*_~#]/g, '\\$&')
+    .replace(/[\\|[\]()<>!`*_~#@]/g, '\\$&')
     // autolink GFM: "https://" e "www." viram link; a barra invertida mantém o texto visível.
     .replace(/:(?=\/\/)/g, '\\:')
-    .replace(/\bwww\./gi, (m) => m.replace('.', '\\.'));
+    .replace(/(?<![A-Za-z0-9])www\./gi, (m) => m.replace('.', '\\.'));
 
 export class MarkdownExportador implements Exportador {
   readonly formato = 'md' as const;
