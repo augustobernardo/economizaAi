@@ -10,7 +10,12 @@ import { formatarPercentual, plural, resumir } from '../../domain/resumo.js';
 
 /** Texto do usuário vira literal: sem quebrar a tabela nem virar link, imagem ou HTML. */
 const celula = (texto: string) =>
-  texto.replace(/\r?\n|\r/g, ' ').replace(/[\\|[\]()<>!`]/g, '\\$&');
+  texto
+    .replace(/\r?\n|\r/g, ' ')
+    .replace(/[\\|[\]()<>!`*_~#]/g, '\\$&')
+    // autolink GFM: "https://" e "www." viram link; a barra invertida mantém o texto visível.
+    .replace(/:(?=\/\/)/g, '\\:')
+    .replace(/\bwww\./gi, (m) => m.replace('.', '\\.'));
 
 export class MarkdownExportador implements Exportador {
   readonly formato = 'md' as const;
