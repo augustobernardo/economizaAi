@@ -26,7 +26,7 @@
     "test:e2e": "vitest run --config ./vitest.config.e2e.ts",
     "test:integration": "vitest run --config ./vitest.config.integration.ts",
     "test:ia": "node --env-file-if-exists=.env node_modules/vitest/vitest.mjs run --config ./vitest.config.ia.ts",
-    "migration:run": "pnpm build && node --env-file-if-exists=.env node_modules/typeorm/cli.js migration:run -d dist/database/data-source.js",
+    "migration:run": "pnpm build && node --env-file-if-exists=.env dist/database/migrar.js",
     "migration:revert": "pnpm build && node --env-file-if-exists=.env node_modules/typeorm/cli.js migration:revert -d dist/database/data-source.js"
   },
   "dependencies": {

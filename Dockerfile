@@ -28,4 +28,4 @@ USER node
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
   CMD wget -qO /dev/null "http://127.0.0.1:${PORT:-3000}/health" || exit 1
 # Migrations antes do app; exec para o Node receber o SIGTERM do redeploy.
-CMD ["sh", "-c", "node node_modules/typeorm/cli.js migration:run -d dist/database/data-source.js && exec node dist/main.js"]
+CMD ["sh", "-c", "node dist/database/migrar.js && exec node dist/main.js"]
