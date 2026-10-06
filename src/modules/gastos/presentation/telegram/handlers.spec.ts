@@ -1,10 +1,30 @@
 import { describe, expect, it, vi } from 'vitest';
 import { umGasto } from '../../../../../test/builders/gasto.builder.js';
-import { ProvedorIndisponivelError } from '../../application/errors.js';
+import {
+  NenhumGastoEncontradoError,
+  ProvedorIndisponivelError,
+} from '../../application/errors.js';
+import { DownloadFalhouError } from './download.js';
 import { montarCallbackDesfazer } from './callback.js';
-import { MENSAGEM_TEXTO_LONGO, TEXTO_AJUDA } from './formatador.js';
-import { MAX_CARACTERES_TEXTO } from '../limites.js';
-import { tratarDesfazer, tratarTexto, type DepsTelegram } from './handlers.js';
+import {
+  formatarSemGastoNoAudio,
+  MENSAGEM_AUDIO_GRANDE,
+  MENSAGEM_AUDIO_LONGO,
+  MENSAGEM_TEXTO_LONGO,
+  mensagemDeErro,
+  TEXTO_AJUDA,
+} from './formatador.js';
+import {
+  MAX_BYTES_AUDIO,
+  MAX_CARACTERES_TEXTO,
+  MAX_DURACAO_AUDIO_S,
+} from '../limites.js';
+import {
+  tratarDesfazer,
+  tratarTexto,
+  tratarVoz,
+  type DepsTelegram,
+} from './handlers.js';
 
 const REGISTRO = '3f1c2a9e-8b7d-4c6e-9a1b-2d3e4f5a6b7c';
 
@@ -19,6 +39,7 @@ function deps(parcial: Partial<DepsTelegram> = {}): DepsTelegram {
     },
     desfazer: { executar: vi.fn(async () => 1) },
     logger: { error: vi.fn() },
+    baixarArquivo: vi.fn(async () => Buffer.from('ogg')),
     ...parcial,
   };
 }
@@ -207,5 +228,165 @@ describe('tratarDesfazer', () => {
     expect(ctx.answerCallbackQuery).toHaveBeenCalledWith(
       'Nada para desfazer (expirado ou já desfeito)',
     );
+  });
+});
+
+function ctxVoz(
+  voice: { duration: number; file_size?: number },
+  filePath: string | null = 'voice/f.oga',
+) {
+  return {
+    msg: { voice },
+    getFile: vi.fn(async () => ({ file_path: filePath ?? undefined })),
+    reply: vi.fn(async () => undefined),
+  };
+}
+
+const MSG_DOWNLOAD = 'Não consegui baixar o áudio. Tente de novo.';
+
+describe('tratarVoz', () => {
+  it('baixa, registra como áudio e responde com transcrição e Desfazer', async () => {
+    const d = deps();
+    const ctx = ctxVoz({ duration: 5, file_size: 1000 });
+
+    await tratarVoz(ctx, d);
+
+    expect(d.baixarArquivo).toHaveBeenCalledWith('voice/f.oga');
+    expect(d.registrar.executar).toHaveBeenCalledWith({
+      tipo: 'audio',
+      audio: Buffer.from('ogg'),
+      mimeType: 'audio/ogg',
+    });
+    const [texto, extra] = ctx.reply.mock.calls[0] as unknown as [
+      string,
+      { reply_markup: { inline_keyboard: { callback_data: string }[][] } },
+    ];
+    expect(texto.startsWith('🎙️ "gastei 10"')).toBe(true);
+    expect(extra.reply_markup.inline_keyboard[0]![0]!.callback_data).toBe(
+      montarCallbackDesfazer(REGISTRO),
+    );
+  });
+
+  it('duração acima do limite não baixa', async () => {
+    const d = deps();
+    const ctx = ctxVoz({ duration: MAX_DURACAO_AUDIO_S + 1 });
+    await tratarVoz(ctx, d);
+    expect(ctx.getFile).not.toHaveBeenCalled();
+    expect(d.baixarArquivo).not.toHaveBeenCalled();
+    expect(ctx.reply).toHaveBeenCalledWith(MENSAGEM_AUDIO_LONGO);
+  });
+
+  it('tamanho acima do limite não baixa', async () => {
+    const d = deps();
+    const ctx = ctxVoz({ duration: 5, file_size: MAX_BYTES_AUDIO + 1 });
+    await tratarVoz(ctx, d);
+    expect(ctx.getFile).not.toHaveBeenCalled();
+    expect(d.baixarArquivo).not.toHaveBeenCalled();
+    expect(ctx.reply).toHaveBeenCalledWith(MENSAGEM_AUDIO_GRANDE);
+  });
+
+  it('exatamente no limite é aceito', async () => {
+    const d = deps();
+    await tratarVoz(
+      ctxVoz({ duration: MAX_DURACAO_AUDIO_S, file_size: MAX_BYTES_AUDIO }),
+      d,
+    );
+    expect(d.baixarArquivo).toHaveBeenCalledOnce();
+  });
+
+  it('sem gasto mostra o que foi ouvido', async () => {
+    const d = deps({
+      registrar: {
+        executar: vi.fn(async () => {
+          throw new NenhumGastoEncontradoError('x', 'bom dia');
+        }),
+      },
+    });
+    const ctx = ctxVoz({ duration: 3 });
+    await tratarVoz(ctx, d);
+    expect(ctx.reply).toHaveBeenCalledWith(formatarSemGastoNoAudio('bom dia'));
+  });
+
+  it('sem gasto e sem fala → mensagem padrão', async () => {
+    const d = deps({
+      registrar: {
+        executar: vi.fn(async () => {
+          throw new NenhumGastoEncontradoError('x', '');
+        }),
+      },
+    });
+    const ctx = ctxVoz({ duration: 3 });
+    await tratarVoz(ctx, d);
+    expect(ctx.reply).toHaveBeenCalledWith(
+      mensagemDeErro(new NenhumGastoEncontradoError('x')),
+    );
+  });
+
+  it('transcrição só com espaços → mensagem padrão', async () => {
+    const d = deps({
+      registrar: {
+        executar: vi.fn(async () => {
+          throw new NenhumGastoEncontradoError('x', '  ');
+        }),
+      },
+    });
+    const ctx = ctxVoz({ duration: 3 });
+    await tratarVoz(ctx, d);
+    expect(ctx.reply).toHaveBeenCalledWith(
+      mensagemDeErro(new NenhumGastoEncontradoError('x')),
+    );
+  });
+
+  it('erro inesperado é logado só com o nome', async () => {
+    const d = deps({
+      registrar: {
+        executar: vi.fn(async () => {
+          throw new Error('texto privado');
+        }),
+      },
+    });
+    const ctx = ctxVoz({ duration: 3 });
+    await tratarVoz(ctx, d);
+    expect(ctx.reply).toHaveBeenCalledWith('Erro inesperado. Tente de novo.');
+    expect(d.logger.error).toHaveBeenCalledOnce();
+    const [msg] = vi.mocked(d.logger.error).mock.calls[0]!;
+    expect(msg).toContain('tratarVoz');
+    expect(msg).toContain('Error');
+    expect(JSON.stringify(vi.mocked(d.logger.error).mock.calls)).not.toContain(
+      'texto privado',
+    );
+  });
+
+  it('download falho → mensagem própria, sem chamar a IA', async () => {
+    const d = deps({
+      baixarArquivo: vi.fn(async () => {
+        throw new DownloadFalhouError();
+      }),
+    });
+    const ctx = ctxVoz({ duration: 3 });
+    await tratarVoz(ctx, d);
+    expect(d.registrar.executar).not.toHaveBeenCalled();
+    expect(ctx.reply).toHaveBeenCalledWith(MSG_DOWNLOAD);
+    expect(d.logger.error).not.toHaveBeenCalled();
+  });
+
+  it('getFile sem file_path → mensagem de download', async () => {
+    const d = deps();
+    const ctx = ctxVoz({ duration: 3 }, null);
+    await tratarVoz(ctx, d);
+    expect(d.baixarArquivo).not.toHaveBeenCalled();
+    expect(ctx.reply).toHaveBeenCalledWith(MSG_DOWNLOAD);
+  });
+
+  it('getFile rejeitando → mensagem de download', async () => {
+    const d = deps();
+    const ctx = {
+      ...ctxVoz({ duration: 3 }),
+      getFile: vi.fn(async () => {
+        throw new Error('400');
+      }),
+    };
+    await tratarVoz(ctx, d);
+    expect(ctx.reply).toHaveBeenCalledWith(MSG_DOWNLOAD);
   });
 });

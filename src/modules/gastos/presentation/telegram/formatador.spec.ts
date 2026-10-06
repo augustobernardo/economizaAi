@@ -13,7 +13,16 @@ import {
   ValorAcimaDoTetoError,
   ValorInvalidoError,
 } from '../../domain/errors.js';
-import { formatarRegistro, mensagemDeErro } from './formatador.js';
+import { DownloadFalhouError } from './download.js';
+import {
+  formatarRegistro,
+  formatarRegistroDeAudio,
+  formatarSemGastoNoAudio,
+  MENSAGEM_AUDIO_LONGO,
+  MENSAGEM_NAO_SUPORTADO,
+  mensagemDeErro,
+  TEXTO_AJUDA,
+} from './formatador.js';
 
 describe('formatarRegistro', () => {
   it('formata dois gastos com total, acento e data dd/MM', () => {
@@ -85,5 +94,38 @@ describe('mensagemDeErro', () => {
     ['não é Error', 'Erro inesperado. Tente de novo.'],
   ])('%o → mensagem amigável', (erro, esperado) => {
     expect(mensagemDeErro(erro)).toBe(esperado);
+  });
+});
+
+describe('áudio', () => {
+  it('formatarRegistroDeAudio mostra a transcrição antes da lista', () => {
+    const texto = formatarRegistroDeAudio('gastei 10 no mercado', [
+      umGasto().comValor(10).build(),
+    ]);
+    expect(texto.split('\n').slice(0, 3)).toEqual([
+      '🎙️ "gastei 10 no mercado"',
+      '',
+      '✅ 1 gasto registrado',
+    ]);
+  });
+
+  it('formatarSemGastoNoAudio mostra o que foi ouvido', () => {
+    expect(formatarSemGastoNoAudio('bom dia')).toBe(
+      '🎙️ Ouvi: "bom dia"\nNão encontrei nenhum gasto.',
+    );
+  });
+
+  it('DownloadFalhouError → mensagem própria', () => {
+    expect(mensagemDeErro(new DownloadFalhouError())).toBe(
+      'Não consegui baixar o áudio. Tente de novo.',
+    );
+  });
+
+  it('mensagens de limite e de tipo não suportado', () => {
+    expect(MENSAGEM_AUDIO_LONGO).toBe('Áudio muito longo (máximo de 60 s).');
+    expect(MENSAGEM_NAO_SUPORTADO).toBe(
+      'Por enquanto só entendo mensagens de texto e de voz.',
+    );
+    expect(TEXTO_AJUDA).toMatch(/áudio|voz/i);
   });
 });

@@ -14,7 +14,8 @@ import {
   ValorInvalidoError,
 } from '../../domain/errors.js';
 import type { Gasto } from '../../domain/gasto.js';
-import { MAX_CARACTERES_TEXTO } from '../limites.js';
+import { MAX_CARACTERES_TEXTO, MAX_DURACAO_AUDIO_S } from '../limites.js';
+import { DownloadFalhouError } from './download.js';
 
 const ROTULOS: Record<Categoria, string> = {
   alimentacao: 'alimentação',
@@ -33,14 +34,17 @@ export const TEXTO_AJUDA = [
   'Me mande seus gastos em texto, por exemplo:',
   '• "gastei 32,50 de uber"',
   '• "ontem 18 num açaí e 120 no mercado"',
+  '• ou mande um áudio falando o gasto',
   '',
   'Depois de registrar, o botão ↩️ Desfazer vale por 1 hora.',
 ].join('\n');
 
 export const TEXTO_START = `Olá! Eu registro seus gastos.\n\n${TEXTO_AJUDA}`;
 export const MENSAGEM_TEXTO_LONGO = `Mensagem muito longa (máximo de ${MAX_CARACTERES_TEXTO} caracteres).`;
+export const MENSAGEM_AUDIO_LONGO = `Áudio muito longo (máximo de ${MAX_DURACAO_AUDIO_S} s).`;
+export const MENSAGEM_AUDIO_GRANDE = 'Áudio muito grande (máximo de 1 MB).';
 export const MENSAGEM_NAO_SUPORTADO =
-  'Por enquanto só entendo mensagens de texto.';
+  'Por enquanto só entendo mensagens de texto e de voz.';
 
 /** `YYYY-MM-DD` → `dd/MM`, sem `Date` (evita erro de fuso). */
 function diaMes(dataGasto: string): string {
@@ -64,6 +68,17 @@ export function formatarRegistro(gastos: readonly Gasto[]): string {
   return [titulo, ...linhas, `Total: ${total.formatar()}`].join('\n');
 }
 
+export function formatarRegistroDeAudio(
+  transcricao: string,
+  gastos: readonly Gasto[],
+): string {
+  return `🎙️ "${transcricao}"\n\n${formatarRegistro(gastos)}`;
+}
+
+export function formatarSemGastoNoAudio(transcricao: string): string {
+  return `🎙️ Ouvi: "${transcricao}"\nNão encontrei nenhum gasto.`;
+}
+
 const MENSAGENS: [new (...args: never[]) => Error, string][] = [
   [
     NenhumGastoEncontradoError,
@@ -80,6 +95,7 @@ const MENSAGENS: [new (...args: never[]) => Error, string][] = [
   [DataForaDaJanelaError, 'Só registro gastos de até 1 ano atrás.'],
   [DataInvalidaError, 'Não consegui entender a data.'],
   [DescricaoVaziaError, 'Faltou dizer com o que foi o gasto.'],
+  [DownloadFalhouError, 'Não consegui baixar o áudio. Tente de novo.'],
 ];
 
 /** Mensagem amigável; nunca expõe a mensagem interna do erro. */

@@ -8,8 +8,15 @@ import { Dinheiro } from '../../domain/dinheiro.js';
 import { ValorAcimaDoTetoError } from '../../domain/errors.js';
 import { Gasto } from '../../domain/gasto.js';
 import { GeminiExtrator, type ModelosGemini } from './gemini.extrator.js';
-import { instrucaoDeSistema, mensagemDoUsuario } from './prompt.js';
-import { respostaExtracaoJsonSchema } from './schema.js';
+import {
+  INSTRUCAO_AUDIO,
+  instrucaoDeSistema,
+  mensagemDoUsuario,
+} from './prompt.js';
+import {
+  respostaExtracaoAudioJsonSchema,
+  respostaExtracaoJsonSchema,
+} from './schema.js';
 
 const DATA = new Date('2026-10-03T15:00:00Z');
 const TEXTO = 'ontem gastei 32,50 de uber';
@@ -117,15 +124,79 @@ describe('GeminiExtrator', () => {
     },
   );
 
-  it('recusa áudio sem chamar o SDK', async () => {
-    const { extrator, generateContent } = criar({ text: '{}' });
-    await expect(
-      extrator.extrair(
-        { tipo: 'audio', audio: Buffer.from('x'), mimeType: 'audio/ogg' },
-        DATA,
-      ),
-    ).rejects.toThrow(/áudio não suportado/i);
-    expect(generateContent).not.toHaveBeenCalled();
+  describe('áudio', () => {
+    const AUDIO = Buffer.from('opus-fake');
+
+    const extrairAudio = (extrator: GeminiExtrator, mimeType = 'audio/ogg') =>
+      extrator.extrair({ tipo: 'audio', audio: AUDIO, mimeType }, DATA);
+
+    it('envia o áudio inline em base64 com a instrução e o schema de áudio', async () => {
+      const { extrator, generateContent } = criar({
+        text: JSON.stringify({ gastos: [], transcricao: 'oi' }),
+      });
+
+      await extrairAudio(extrator);
+
+      expect(generateContent).toHaveBeenCalledWith({
+        model: 'modelo-x',
+        contents: [
+          {
+            role: 'user',
+            parts: [
+              {
+                inlineData: {
+                  mimeType: 'audio/ogg',
+                  data: AUDIO.toString('base64'),
+                },
+              },
+              { text: INSTRUCAO_AUDIO },
+            ],
+          },
+        ],
+        config: {
+          systemInstruction: instrucaoDeSistema(DATA, 'audio'),
+          temperature: 0,
+          responseMimeType: 'application/json',
+          responseJsonSchema: respostaExtracaoAudioJsonSchema,
+        },
+      });
+    });
+
+    it('devolve os gastos e a transcrição como textoOriginal', async () => {
+      const { extrator } = criar({
+        text: JSON.stringify({
+          gastos: [GASTO],
+          transcricao: 'ontem 32,50 de uber',
+        }),
+      });
+
+      expect(await extrairAudio(extrator)).toEqual({
+        gastos: [GASTO],
+        textoOriginal: 'ontem 32,50 de uber',
+      });
+    });
+
+    it('resposta sem transcricao → RespostaInvalidaDaIaError', async () => {
+      const { extrator } = criar({ text: JSON.stringify({ gastos: [GASTO] }) });
+      await expect(extrairAudio(extrator)).rejects.toBeInstanceOf(
+        RespostaInvalidaDaIaError,
+      );
+    });
+
+    it('MIME não suportado não chama o SDK', async () => {
+      const { extrator, generateContent } = criar({ text: '{}' });
+      await expect(extrairAudio(extrator, 'audio/mpeg')).rejects.toThrow(
+        /formato de áudio não suportado/i,
+      );
+      expect(generateContent).not.toHaveBeenCalled();
+    });
+
+    it('erro transitório → ProvedorIndisponivelError', async () => {
+      const { extrator } = criar(apiError(503));
+      await expect(extrairAudio(extrator)).rejects.toBeInstanceOf(
+        ProvedorIndisponivelError,
+      );
+    });
   });
 
   describe('injection', () => {

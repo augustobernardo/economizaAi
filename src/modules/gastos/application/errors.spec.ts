@@ -18,3 +18,16 @@ describe.each([
     expect(erro.message).toBe('falhou');
   });
 });
+
+describe('NenhumGastoEncontradoError', () => {
+  it('carrega o texto original quando informado', () => {
+    const erro = new NenhumGastoEncontradoError('nada', 'bom dia');
+    expect(erro.textoOriginal).toBe('bom dia');
+  });
+
+  it('textoOriginal é opcional', () => {
+    expect(
+      new NenhumGastoEncontradoError('nada').textoOriginal,
+    ).toBeUndefined();
+  });
+});

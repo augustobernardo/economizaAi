@@ -1,6 +1,6 @@
 ---
 name: integrador-infra
-description: Implementa infrastructure/ e presentation/ do EconomizaAI - TypeORM e migrations, adapters Gemini/Groq/Fallback, Telegraf, exportadores CSV/Markdown, configuração e endpoints de dev.
+description: Implementa infrastructure/ e presentation/ do EconomizaAI - TypeORM e migrations, adapters Gemini/Groq/Fallback, grammY (Telegram), exportadores CSV/Markdown, configuração e endpoints de dev.
 tools: Read, Glob, Grep, Edit, Write, Bash, WebFetch, WebSearch
 model: sonnet
 color: blue
@@ -43,7 +43,7 @@ aceite, não sugestão.
 
 ## Pesquisa
 Use WebFetch/WebSearch para confirmar a API atual de SDKs (`@google/genai`,
-`groq-sdk`, Telegraf, TypeORM) e nomes de modelos vigentes. Não invente assinaturas de métodos de memória.
+`groq-sdk`, grammY, TypeORM) e nomes de modelos vigentes. Não invente assinaturas de métodos de memória.
 
 ## Proibições
 Não leia `.env`. Não adicione dependências sem justificar no relatório

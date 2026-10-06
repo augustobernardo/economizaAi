@@ -22,7 +22,7 @@ Repita por comportamento, não escreva todos os testes de uma vez.
 
 ## Regras
 - `domain/` é TypeScript puro: proibido importar `@nestjs/*`, `typeorm`,
-  `telegraf`, SDKs de IA ou qualquer coisa fora de `domain/`.
+  `grammy`, SDKs de IA ou qualquer coisa fora de `domain/`.
 - `application/` depende só de `domain/` e dos próprios ports.
 - Use fakes de `test/fakes/` (`InMemoryGastoRepository`, `FakeExtrator`,
   `RelogioFixo`), não mocks de framework, para testar casos de uso.

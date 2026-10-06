@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
+  respostaExtracaoAudioJsonSchema,
+  respostaExtracaoAudioSchema,
   respostaExtracaoJsonSchema,
   respostaExtracaoSchema,
 } from './schema.js';
@@ -98,5 +100,53 @@ describe('respostaExtracaoSchema', () => {
         "type": "object",
       }
     `);
+  });
+});
+
+describe('respostaExtracaoAudioSchema', () => {
+  it('aceita gastos com transcricao', () => {
+    expect(
+      respostaExtracaoAudioSchema.safeParse({
+        gastos: [gasto],
+        transcricao: 'gastei 50 no mercado',
+      }).success,
+    ).toBe(true);
+  });
+
+  it('aceita transcricao vazia', () => {
+    expect(
+      respostaExtracaoAudioSchema.safeParse({ gastos: [], transcricao: '' })
+        .success,
+    ).toBe(true);
+  });
+
+  it('rejeita sem transcricao', () => {
+    expect(respostaExtracaoAudioSchema.safeParse({ gastos: [] }).success).toBe(
+      false,
+    );
+  });
+
+  it('rejeita transcricao acima de 2000 caracteres', () => {
+    expect(
+      respostaExtracaoAudioSchema.safeParse({
+        gastos: [],
+        transcricao: 'x'.repeat(2001),
+      }).success,
+    ).toBe(false);
+  });
+
+  it('rejeita campo extra', () => {
+    expect(
+      respostaExtracaoAudioSchema.safeParse({
+        gastos: [],
+        transcricao: '',
+        extra: 1,
+      }).success,
+    ).toBe(false);
+  });
+
+  it('JSON Schema de áudio não tem $schema e exige transcricao', () => {
+    expect(respostaExtracaoAudioJsonSchema).not.toHaveProperty('$schema');
+    expect(respostaExtracaoAudioJsonSchema.required).toContain('transcricao');
   });
 });
