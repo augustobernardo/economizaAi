@@ -50,6 +50,10 @@ temp/
 
 # Documentos internos (só locais)
 /SECURITY.md
-/ROADMAP.md
-/PROMPT_INICIAL.md
+/docs/ROADMAP.md
+/docs/PROMPT_INICIAL.md
 /docs/deploy.md
+/BACKLOG-FEATURES.md
+/EVOLUCAO-MULTIUSUARIO-LGPD.md
+/docs/WHISPER-LOCAL-FALLBACK.md
+/.superpowers/
