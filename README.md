@@ -33,6 +33,7 @@ documented security) matters as much as the features.
 - [Usage](#usage)
 - [Tests](#tests)
 - [Development workflow](#development-workflow)
+- [Deploy](#deploy)
 - [Documentation](#documentation)
 - [License](#license)
 
@@ -157,6 +158,15 @@ reaches production. Commits follow
 [Conventional Commits](https://www.conventionalcommits.org/), enforced by
 commitlint. The full rules live in
 [CLAUDE.md](./CLAUDE.md#git--branches-commits-prs-e-merges) (Portuguese).
+
+## Deploy
+
+Production runs as a Docker container on Easypanel. Easypanel Auto Deploy
+is off: the `deploy` job in CI triggers it only after `ci` and `gitleaks`
+pass on a push to `main`, authenticating through a Cloudflare Access
+service token scoped to the deploy path. If `main` has already moved past
+the tested commit, the `deploy` job ends green without calling Easypanel and
+the newer commit's own run deploys it.
 
 ## Documentation
 

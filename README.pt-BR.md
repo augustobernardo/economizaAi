@@ -28,6 +28,7 @@ segurança documentada) importa tanto quanto a funcionalidade.
 - [Uso](#uso)
 - [Testes](#testes)
 - [Fluxo de desenvolvimento](#fluxo-de-desenvolvimento)
+- [Deploy](#deploy)
 - [Documentação](#documentação)
 - [Licença](#licença)
 
@@ -150,6 +151,15 @@ CI roda, e só um PR `develop → main` com o CI verde chega à produção. Os
 commits seguem [Conventional Commits](https://www.conventionalcommits.org/),
 verificados pelo commitlint. As regras completas estão no
 [CLAUDE.md](./CLAUDE.md#git--branches-commits-prs-e-merges).
+
+## Deploy
+
+A produção roda como container Docker no Easypanel. O Auto Deploy do
+Easypanel fica desligado: o job `deploy` do CI dispara o deploy só depois
+de `ci` e `gitleaks` passarem num push na `main`, autenticando por um
+service token do Cloudflare Access restrito ao caminho de deploy. Se a `main` já avançou além do commit
+testado, o job `deploy` termina verde sem chamar o Easypanel e a execução do
+commit mais novo faz o deploy dele.
 
 ## Documentação
 
