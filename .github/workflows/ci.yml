@@ -71,9 +71,10 @@ jobs:
       - name: Escaneia a imagem (trivy, CRITICAL com correção)
         run: |
           img=$(sed -n 's/^FROM //p' .github/tools/trivy/Dockerfile)
-          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
-            "$img" \
-            image --severity CRITICAL --ignore-unfixed --exit-code 1 --no-progress economizaai:ci
+          docker save "economizaai:ci" -o "$RUNNER_TEMP/image.tar"
+          docker run --rm -v "$RUNNER_TEMP/image.tar:/in/image.tar:ro" "$img" \
+            image --input /in/image.tar --severity CRITICAL --ignore-unfixed --exit-code 1 --no-progress
+          rm -f "$RUNNER_TEMP/image.tar"
 
   gitleaks:
     name: gitleaks
@@ -92,9 +93,77 @@ jobs:
           docker run --rm -v "$PWD:/repo" "$img" \
             git --redact --verbose /repo
 
+  release:
+    name: release
+    needs: [ci, gitleaks]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    concurrency:
+      group: release-main
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
+    env:
+      IMAGE: ghcr.io/augustobernardo/economizaai
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Build da imagem
+        run: |
+          docker build \
+            --label org.opencontainers.image.source=https://github.com/augustobernardo/economizaAi \
+            --label "org.opencontainers.image.revision=${GITHUB_SHA}" \
+            -t "${IMAGE}:${GITHUB_SHA}" .
+
+      - name: Escaneia a imagem (trivy, CRITICAL com correção)
+        run: |
+          img=$(sed -n 's/^FROM //p' .github/tools/trivy/Dockerfile)
+          docker save "${IMAGE}:${GITHUB_SHA}" -o "$RUNNER_TEMP/image.tar"
+          docker run --rm -v "$RUNNER_TEMP/image.tar:/in/image.tar:ro" "$img" \
+            image --input /in/image.tar --severity CRITICAL --ignore-unfixed --exit-code 1 --no-progress
+          rm -f "$RUNNER_TEMP/image.tar"
+
+      - name: Login no GHCR
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: printf '%s' "$GH_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+
+      - name: Publica a imagem
+        id: push
+        run: |
+          docker tag "${IMAGE}:${GITHUB_SHA}" "${IMAGE}:main"
+          docker push "${IMAGE}:${GITHUB_SHA}"
+          docker push "${IMAGE}:main"
+          ref=$(docker inspect --format '{{index .RepoDigests 0}}' "${IMAGE}:${GITHUB_SHA}")
+          digest="${ref#*@}"
+          case "${digest}" in
+            sha256:*) ;;
+            *) echo "::error::could not resolve pushed digest"; exit 1 ;;
+          esac
+          echo "digest=${digest}" >> "$GITHUB_OUTPUT"
+          echo "Published \`${IMAGE}@${digest}\` (tags \`${GITHUB_SHA}\`, \`main\`)" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Atesta a proveniência
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-name: ${{ env.IMAGE }}
+          subject-digest: ${{ steps.push.outputs.digest }}
+          push-to-registry: true
+
+      - name: Logout do GHCR
+        if: always()
+        run: docker logout ghcr.io
+
   deploy:
     name: deploy
-    needs: [ci, gitleaks]
+    needs: [release]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -109,7 +178,7 @@ jobs:
           CF_ACCESS_CLIENT_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
           CF_ACCESS_CLIENT_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
         run: |
-          # Easypanel builds the HEAD of main, so deploy only if it is the tested commit (ponytail: push between check and pull still races).
+          # Easypanel pulls :main from GHCR; deploy only if main is still this commit, so :main is this run's image (ponytail: push between check and pull still races).
           head=$(git ls-remote "https://github.com/${GITHUB_REPOSITORY}" refs/heads/main | cut -f1)
           if [ -z "${head}" ]; then
             echo "::error::could not resolve main head"

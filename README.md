@@ -168,6 +168,9 @@ service token scoped to the deploy path. If `main` has already moved past
 the tested commit, the `deploy` job ends green without calling Easypanel and
 the newer commit's own run deploys it.
 
+On a push to `main`, CI builds and scans the image, publishes it to GHCR
+with a provenance attestation, and Easypanel deploys that exact image.
+
 ## Documentation
 
 These documents are written in Portuguese:
