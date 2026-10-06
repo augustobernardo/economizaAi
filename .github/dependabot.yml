@@ -13,7 +13,7 @@ updates:
       interval: 'weekly'
 
   - package-ecosystem: 'docker'
-    directory: '/'
+    directories: ['/', '/.github/tools/*']
     target-branch: 'develop'
     schedule:
       interval: 'weekly'

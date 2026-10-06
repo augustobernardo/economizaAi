@@ -65,16 +65,14 @@ jobs:
       - name: Audita dependências de produção
         run: pnpm audit --prod --audit-level high
 
-      - name: Build
-        run: pnpm build
-
       - name: Build da imagem Docker (sem publicar)
         run: docker build -t economizaai:ci .
 
       - name: Escaneia a imagem (trivy, CRITICAL com correção)
         run: |
+          img=$(sed -n 's/^FROM //p' .github/tools/trivy/Dockerfile)
           docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
-            aquasec/trivy:0.75.0@sha256:af6acf9a6b85dfe389a1941505c0ce9efef52a4719635e1a962f022a3d855daa \
+            "$img" \
             image --severity CRITICAL --ignore-unfixed --exit-code 1 --no-progress economizaai:ci
 
   gitleaks:
@@ -90,7 +88,8 @@ jobs:
 
       - name: Escaneia segredos no histórico
         run: |
-          docker run --rm -v "$PWD:/repo" zricethezav/gitleaks:v8.30.1@sha256:c00b6bd0aeb3071cbcb79009cb16a60dd9e0a7c60e2be9ab65d25e6bc8abbb7f \
+          img=$(sed -n 's/^FROM //p' .github/tools/gitleaks/Dockerfile)
+          docker run --rm -v "$PWD:/repo" "$img" \
             git --redact --verbose /repo
 
   deploy:
