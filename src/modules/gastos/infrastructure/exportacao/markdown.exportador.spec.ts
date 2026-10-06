@@ -69,6 +69,31 @@ describe('MarkdownExportador', () => {
     expect(t).not.toMatch(/[^\\]<img/);
   });
 
+  it('escapa ênfase, riscado e título na descrição', () => {
+    const t = texto([gasto(10, 'mercado', '*negrito* _it_ ~~x~~ #tag')]);
+    expect(t).toContain('\\*negrito\\* \\_it\\_ \\~\\~x\\~\\~ \\#tag');
+  });
+
+  it('não deixa URL crua virar link', () => {
+    const t = texto([
+      gasto(10, 'mercado', 'https://exemplo.com'),
+      gasto(5, 'lazer', 'www.exemplo.com'),
+    ]);
+    expect(t).toContain('https\\://exemplo.com');
+    expect(t).toContain('www\\.exemplo.com');
+    expect(t).not.toContain('https://');
+  });
+
+  it('escapa www. após underscore', () => {
+    expect(texto([gasto(10, 'lazer', '_www.x.com')])).toContain(
+      '\\_www\\.x.com',
+    );
+  });
+
+  it('não deixa e-mail virar autolink', () => {
+    expect(texto([gasto(10, 'lazer', 'a@b.com')])).toContain('a\\@b.com');
+  });
+
   it('soma dos totais por categoria = total geral', () => {
     const t = texto([
       gasto(10, 'mercado', 'a'),
