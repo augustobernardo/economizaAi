@@ -161,6 +161,9 @@ service token do Cloudflare Access restrito ao caminho de deploy. Se a `main` j�
 testado, o job `deploy` termina verde sem chamar o Easypanel e a execução do
 commit mais novo faz o deploy dele.
 
+Num push na `main`, o CI gera e escaneia a imagem, publica no GHCR com
+uma atestação de proveniência, e o Easypanel faz o deploy dessa mesma imagem.
+
 ## Documentação
 
 - [CLAUDE.md](./CLAUDE.md): contexto, arquitetura e regras de trabalho
