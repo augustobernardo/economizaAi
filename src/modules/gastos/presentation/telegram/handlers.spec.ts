@@ -7,8 +7,10 @@ import {
   ProvedorIndisponivelError,
 } from '../../application/errors.js';
 import type { ResultadoProcessamento } from '../../application/use-cases/processar-mensagem.use-case.js';
+import { DataInvalidaError } from '../../domain/errors.js';
 import { Periodo } from '../../domain/periodo.js';
 import { resumir } from '../../domain/resumo.js';
+import { RelogioFixo } from '../../../../../test/fakes/relogio-fixo.js';
 import { DownloadFalhouError } from './download.js';
 import { montarCallbackDesfazer } from './callback.js';
 import {
@@ -16,11 +18,13 @@ import {
   formatarResumo,
   formatarSemGastoNoAudio,
   formatarUltimos,
+  legendaExportacao,
   MENSAGEM_AUDIO_GRANDE,
   MENSAGEM_AUDIO_LONGO,
+  MENSAGEM_COMANDO_DESCONHECIDO,
+  MENSAGEM_ESCOLHER_MES_EXPORTAR,
   MENSAGEM_TEXTO_LONGO,
   mensagemDeErro,
-  TEXTO_AJUDA,
 } from './formatador.js';
 import {
   MAX_BYTES_AUDIO,
@@ -38,6 +42,7 @@ import {
   type DepsTelegram,
 } from './handlers.js';
 
+const HOJE = '2026-10-05';
 const REGISTRO = '3f1c2a9e-8b7d-4c6e-9a1b-2d3e4f5a6b7c';
 const AGOSTO = Periodo.criar('2026-08-01', '2026-08-31', '2026-10-04');
 const GASTOS = [
@@ -95,6 +100,7 @@ function deps(parcial: Partial<DepsTelegram> = {}): DepsTelegram {
     listarUltimos: { executar: vi.fn(async () => GASTOS) },
     desfazer: { executar: vi.fn(async () => 1) },
     logger: { error: vi.fn() },
+    relogio: new RelogioFixo(new Date('2026-10-05T15:00:00Z')),
     baixarArquivo: vi.fn(async () => Buffer.from('ogg')),
     ...parcial,
   };
@@ -117,9 +123,9 @@ function ctxComando(match: string) {
   return { match, ...respostas() };
 }
 
-function ctxCallback(data: string | undefined) {
+function ctxCallback(data: string | undefined, texto = '✅ Gasto registrado!') {
   return {
-    callbackQuery: { data, message: { text: '✅ 1 gasto registrado' } },
+    callbackQuery: { data, message: { text: texto } },
     answerCallbackQuery: vi.fn(async (_texto?: string) => true),
     editMessageText: vi.fn(async () => true),
     editMessageReplyMarkup: vi.fn(async () => true),
@@ -159,12 +165,28 @@ describe('tratarTexto', () => {
         };
       },
     ];
-    expect(texto).toContain('✅ 1 gasto registrado');
+    expect(texto).toContain('✅ <b>Gasto registrado!</b>');
     expect(extra.reply_markup.inline_keyboard[0]![0]).toEqual({
       text: '↩️ Desfazer',
       callback_data: montarCallbackDesfazer(REGISTRO),
     });
     expect(extra).not.toHaveProperty('parse_mode');
+  });
+
+  it('registro usa a data de hoje do relógio (Hoje, dd/mm)', async () => {
+    const ctx = ctxTexto('gastei 10');
+    const d = deps({
+      processar: processando({
+        tipo: 'registro',
+        registroId: REGISTRO,
+        gastos: [
+          umGasto().em(new Date('2026-10-05T15:00:00Z')).comData(HOJE).build(),
+        ],
+        textoOriginal: 'gastei 10',
+      }),
+    });
+    await tratarTexto(ctx, d);
+    expect(ctx.reply.mock.calls[0]![0]).toContain('📅 Hoje, 05/10');
   });
 
   it('texto acima do limite não chama a IA', async () => {
@@ -189,12 +211,12 @@ describe('tratarTexto', () => {
     expect(ctx.reply).not.toHaveBeenCalled();
   });
 
-  it('comando desconhecido responde a ajuda sem chamar a IA', async () => {
+  it('comando desconhecido responde ❓ sem chamar a IA', async () => {
     const d = deps();
     const ctx = ctxTexto('/xyz');
     await tratarTexto(ctx, d);
     expect(d.processar.executar).not.toHaveBeenCalled();
-    expect(ctx.reply).toHaveBeenCalledWith(TEXTO_AJUDA);
+    expect(ctx.reply).toHaveBeenCalledWith(MENSAGEM_COMANDO_DESCONHECIDO);
   });
 
   it('erro conhecido vira mensagem amigável sem log de erro', async () => {
@@ -204,7 +226,7 @@ describe('tratarTexto', () => {
     const ctx = ctxTexto('gastei 10');
     await tratarTexto(ctx, d);
     expect(ctx.reply).toHaveBeenCalledWith(
-      'A IA está indisponível agora. Tente de novo em instantes.',
+      mensagemDeErro(new ProvedorIndisponivelError('x')),
     );
     expect(d.logger.error).not.toHaveBeenCalled();
   });
@@ -225,7 +247,7 @@ describe('tratarTexto', () => {
     });
     const ctx = ctxTexto('meu texto privado');
     await tratarTexto(ctx, d);
-    expect(ctx.reply).toHaveBeenCalledWith('Erro inesperado. Tente de novo.');
+    expect(ctx.reply).toHaveBeenCalledWith(mensagemDeErro(new Error('x')));
     expect(d.logger.error).toHaveBeenCalledOnce();
     expect(JSON.stringify(vi.mocked(d.logger.error).mock.calls)).not.toContain(
       'meu texto privado',
@@ -240,9 +262,34 @@ describe('tratarDesfazer', () => {
     await tratarDesfazer(ctx, d);
     expect(d.desfazer.executar).toHaveBeenCalledWith(REGISTRO);
     expect(ctx.editMessageText).toHaveBeenCalledWith(
-      '✅ 1 gasto registrado\n\n↩️ Registro desfeito',
+      '✅ Gasto registrado!\n\n↩️ <b>Pronto, desfiz o registro.</b>',
     );
     expect(ctx.answerCallbackQuery).toHaveBeenCalledWith('Desfeito');
+  });
+
+  it('Desfazer escapa o texto original antes de editar em HTML', async () => {
+    const ctx = ctxCallback(
+      montarCallbackDesfazer(REGISTRO),
+      '✅ Gasto registrado!\n📝 <b>x</b> & y',
+    );
+    await tratarDesfazer(
+      ctx,
+      deps({ desfazer: { executar: vi.fn(async () => 1) } }),
+    );
+    expect(ctx.editMessageText).toHaveBeenCalledWith(
+      '✅ Gasto registrado!\n📝 &lt;b&gt;x&lt;/b&gt; &amp; y\n\n↩️ <b>Pronto, desfiz o registro.</b>',
+    );
+  });
+
+  it('popup de erro do Desfazer não leva tag HTML', async () => {
+    const ctx = ctxCallback(montarCallbackDesfazer(REGISTRO));
+    await tratarDesfazer(
+      ctx,
+      deps({
+        desfazer: falhando(new NenhumGastoNoPeriodoError(AGOSTO)),
+      }),
+    );
+    expect(ctx.answerCallbackQuery.mock.calls[0]![0]).not.toMatch(/<[^>]+>/);
   });
 
   it('nada removido avisa e tira o botão', async () => {
@@ -275,7 +322,7 @@ describe('tratarDesfazer', () => {
     const ctx = ctxCallback(montarCallbackDesfazer(REGISTRO));
     await tratarDesfazer(ctx, d);
     expect(ctx.answerCallbackQuery).toHaveBeenCalledWith(
-      'Erro inesperado. Tente de novo.',
+      '🛠️ Algo deu errado do meu lado. Já registrei o problema.',
     );
     expect(d.logger.error).toHaveBeenCalledOnce();
   });
@@ -287,7 +334,7 @@ describe('tratarDesfazer', () => {
     await tratarDesfazer(ctx, d);
     expect(ctx.answerCallbackQuery).toHaveBeenCalledWith('Desfeito');
     expect(ctx.answerCallbackQuery).not.toHaveBeenCalledWith(
-      'Erro inesperado. Tente de novo.',
+      '🛠️ Algo deu errado do meu lado. Já registrei o problema.',
     );
   });
 
@@ -313,7 +360,7 @@ function ctxVoz(
   };
 }
 
-const MSG_DOWNLOAD = 'Não consegui baixar o áudio. Tente de novo.';
+const MSG_DOWNLOAD = '🎧 Não consegui baixar o áudio. Tente de novo.';
 
 describe('tratarVoz', () => {
   it('baixa, registra como áudio e responde com transcrição e Desfazer', async () => {
@@ -332,7 +379,7 @@ describe('tratarVoz', () => {
       string,
       { reply_markup: { inline_keyboard: { callback_data: string }[][] } },
     ];
-    expect(texto.startsWith('🎙️ "gastei 10"')).toBe(true);
+    expect(texto.startsWith('🎙️ Entendi: "gastei 10"')).toBe(true);
     expect(extra.reply_markup.inline_keyboard[0]![0]!.callback_data).toBe(
       montarCallbackDesfazer(REGISTRO),
     );
@@ -402,7 +449,7 @@ describe('tratarVoz', () => {
     });
     const ctx = ctxVoz({ duration: 3 });
     await tratarVoz(ctx, d);
-    expect(ctx.reply).toHaveBeenCalledWith('Erro inesperado. Tente de novo.');
+    expect(ctx.reply).toHaveBeenCalledWith(mensagemDeErro(new Error('x')));
     expect(d.logger.error).toHaveBeenCalledOnce();
     const [msg] = vi.mocked(d.logger.error).mock.calls[0]!;
     expect(msg).toContain('tratarVoz');
@@ -464,7 +511,7 @@ describe('respostas por tipo de resultado', () => {
     expect(documentosEnviados(ctx)).toEqual([
       {
         nome: 'economizaai-2026-08.csv',
-        caption: '📁 2 gastos — agosto de 2026',
+        caption: legendaExportacao(AGOSTO, 2),
       },
       { nome: 'economizaai-2026-08.md', caption: undefined },
     ]);
@@ -479,11 +526,11 @@ describe('respostas por tipo de resultado', () => {
     await tratarVoz(ctx, d);
 
     expect(documentosEnviados(ctx)[0]!.caption).toBe(
-      comTranscricao('exporta agosto', '📁 2 gastos — agosto de 2026'),
+      comTranscricao('exporta agosto', legendaExportacao(AGOSTO, 2)),
     );
   });
 
-  it('voz → legenda longa é truncada em 1024 caracteres com reticências', async () => {
+  it('voz → legenda longa cabe em 1024 caracteres', async () => {
     const d = deps({
       processar: processando({
         ...exportacao,
@@ -496,7 +543,6 @@ describe('respostas por tipo de resultado', () => {
 
     const legenda = documentosEnviados(ctx)[0]!.caption!;
     expect(legenda.length).toBeLessThanOrEqual(1024);
-    expect(legenda.endsWith('…')).toBe(true);
   });
 
   it('voz → resumo responde com a transcrição e o resumo', async () => {
@@ -530,7 +576,7 @@ describe('respostas por tipo de resultado', () => {
 
     await tratarTexto(ctx, d);
 
-    expect(ctx.reply).toHaveBeenCalledWith(formatarUltimos(GASTOS));
+    expect(ctx.reply).toHaveBeenCalledWith(formatarUltimos(GASTOS, HOJE));
   });
 
   it('nenhum gasto no período → mensagem do mês informado', async () => {
@@ -542,7 +588,7 @@ describe('respostas por tipo de resultado', () => {
     await tratarTexto(ctx, d);
 
     expect(ctx.reply).toHaveBeenCalledWith(
-      'Nenhum gasto encontrado no mês informado (agosto de 2026).',
+      mensagemDeErro(new NenhumGastoNoPeriodoError(AGOSTO)),
     );
     expect(d.logger.error).not.toHaveBeenCalled();
   });
@@ -560,7 +606,7 @@ describe('comandos', () => {
       string,
       Teclado,
     ];
-    expect(texto).toBe('Qual mês você quer exportar?');
+    expect(texto).toBe(MENSAGEM_ESCOLHER_MES_EXPORTAR);
     expect(
       extra.reply_markup.inline_keyboard.flat().map((b) => b.callback_data),
     ).toEqual(['e:0', 'e:-1']);
@@ -600,6 +646,50 @@ describe('comandos', () => {
     );
   });
 
+  it('/resumo 2026-09 resume sem IA', async () => {
+    const d = deps();
+
+    await tratarComandoResumo(ctxComando('2026-09'), d);
+
+    expect(d.resumir.executar).toHaveBeenCalledWith({ mes: '2026-09' });
+    expect(d.processar.executar).not.toHaveBeenCalled();
+  });
+
+  it('/resumo 2026-13 responde mês inválido sem IA', async () => {
+    const d = deps({ resumir: falhando(new DataInvalidaError('x')) });
+    const ctx = ctxComando('2026-13');
+
+    await tratarComandoResumo(ctx, d);
+
+    expect(ctx.reply).toHaveBeenCalledWith(
+      mensagemDeErro(new DataInvalidaError('x')),
+    );
+    expect(d.processar.executar).not.toHaveBeenCalled();
+  });
+
+  it('/resumo 2026-1 não casa o formato e vai à IA', async () => {
+    const d = deps();
+
+    await tratarComandoResumo(ctxComando('2026-1'), d);
+
+    expect(d.resumir.executar).not.toHaveBeenCalled();
+    expect(d.processar.executar).toHaveBeenCalledOnce();
+  });
+
+  it('/resumo mês vazio responde com mês/ano', async () => {
+    const setembro = Periodo.doMesInformado('2026-09', '2026-10-05');
+    const ctx = ctxComando('2026-09');
+
+    await tratarComandoResumo(
+      ctx,
+      deps({ resumir: falhando(new NenhumGastoNoPeriodoError(setembro)) }),
+    );
+
+    expect(ctx.reply).toHaveBeenCalledWith(
+      '🗓️ Nenhum gasto registrado em <b>setembro/2026</b>.',
+    );
+  });
+
   it('/resumo com argumento vira pedido em linguagem natural', async () => {
     const d = deps();
 
@@ -620,7 +710,7 @@ describe('comandos', () => {
     await tratarComandoResumo(ctx, d);
 
     expect(ctx.reply).toHaveBeenCalledWith(
-      'Nenhum gasto encontrado no mês informado (agosto de 2026).',
+      mensagemDeErro(new NenhumGastoNoPeriodoError(AGOSTO)),
     );
   });
 
@@ -631,7 +721,7 @@ describe('comandos', () => {
     await tratarComandoUltimos(ctx, d);
 
     expect(d.listarUltimos.executar).toHaveBeenCalledWith();
-    expect(ctx.reply).toHaveBeenCalledWith(formatarUltimos(GASTOS));
+    expect(ctx.reply).toHaveBeenCalledWith(formatarUltimos(GASTOS, HOJE));
   });
 });
 
@@ -650,7 +740,7 @@ describe('tratarCallback', () => {
     expect(documentosEnviados(ctx)).toEqual([
       {
         nome: 'economizaai-2026-08.csv',
-        caption: '📁 2 gastos — agosto de 2026',
+        caption: legendaExportacao(AGOSTO, 2),
       },
       { nome: 'economizaai-2026-08.md', caption: undefined },
     ]);
@@ -692,8 +782,7 @@ describe('tratarCallback', () => {
       exportar: falhando(new NenhumGastoNoPeriodoError(AGOSTO)),
     });
     const ctx = ctxCallback('e:0');
-    const mensagem =
-      'Nenhum gasto encontrado no mês informado (agosto de 2026).';
+    const mensagem = mensagemDeErro(new NenhumGastoNoPeriodoError(AGOSTO));
 
     await tratarCallback(ctx, d);
 

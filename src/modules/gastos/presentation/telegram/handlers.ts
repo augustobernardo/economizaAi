@@ -1,6 +1,7 @@
 import { InlineKeyboard, InputFile } from 'grammy';
 import { NenhumGastoEncontradoError } from '../../application/errors.js';
 import type { ArquivoExportado } from '../../application/ports/exportador.js';
+import type { Relogio } from '../../application/ports/relogio.js';
 import type { DesfazerRegistroUseCase } from '../../application/use-cases/desfazer-registro.use-case.js';
 import type { ExportarGastosUseCase } from '../../application/use-cases/exportar-gastos.use-case.js';
 import type { ListarUltimosGastosUseCase } from '../../application/use-cases/listar-ultimos-gastos.use-case.js';
@@ -9,6 +10,7 @@ import type {
   ResultadoProcessamento,
 } from '../../application/use-cases/processar-mensagem.use-case.js';
 import type { ResumirGastosUseCase } from '../../application/use-cases/resumir-gastos.use-case.js';
+import { hojeEmSaoPaulo } from '../../domain/data-civil.js';
 import {
   MAX_BYTES_AUDIO,
   MAX_CARACTERES_TEXTO,
@@ -24,6 +26,7 @@ import {
 import { DownloadFalhouError } from './download.js';
 import {
   comTranscricao,
+  formatarDesfeito,
   formatarRegistro,
   formatarResumo,
   formatarSemGastoNoAudio,
@@ -31,10 +34,11 @@ import {
   legendaExportacao,
   MENSAGEM_AUDIO_GRANDE,
   MENSAGEM_AUDIO_LONGO,
+  MENSAGEM_COMANDO_DESCONHECIDO,
+  MENSAGEM_ESCOLHER_MES_EXPORTAR,
   MENSAGEM_NAO_SUPORTADO,
   MENSAGEM_TEXTO_LONGO,
   mensagemDeErro,
-  TEXTO_AJUDA,
 } from './formatador.js';
 
 export interface DepsTelegram {
@@ -44,10 +48,11 @@ export interface DepsTelegram {
   listarUltimos: Pick<ListarUltimosGastosUseCase, 'executar'>;
   desfazer: Pick<DesfazerRegistroUseCase, 'executar'>;
   logger: { error(mensagem: string): void };
+  relogio: Relogio;
   baixarArquivo(filePath: string): Promise<Buffer>;
 }
 
-/** O que os handlers usam para responder; texto puro, sem parse_mode. */
+/** O que os handlers usam para responder; o parse_mode HTML vem do transformer `comHtml`. */
 export interface CtxResposta {
   reply(
     texto: string,
@@ -78,6 +83,12 @@ export interface CtxCallback extends CtxResposta {
   editMessageText(texto: string): Promise<unknown>;
   editMessageReplyMarkup(): Promise<unknown>;
 }
+
+const hojeDe = (deps: DepsTelegram): string =>
+  hojeEmSaoPaulo(deps.relogio.agora());
+
+/** Popup (`answerCallbackQuery`) é texto puro: tira as tags da mensagem de erro. */
+const semTags = (texto: string): string => texto.replace(/<[^>]+>/g, '');
 
 function tecladoDesfazer(registroId: string): InlineKeyboard {
   return new InlineKeyboard().text(
@@ -112,15 +123,6 @@ async function responderErro(
   await ctx.reply(mensagemDeErro(erro));
 }
 
-/** Limite do Telegram para legenda de documento. */
-const MAX_LEGENDA = 1024;
-
-function cortarLegenda(legenda: string): string {
-  return legenda.length > MAX_LEGENDA
-    ? `${legenda.slice(0, MAX_LEGENDA - 1)}…`
-    : legenda;
-}
-
 async function enviarDocumentos(
   ctx: CtxResposta,
   arquivos: readonly ArquivoExportado[],
@@ -129,7 +131,7 @@ async function enviarDocumentos(
   for (const [i, arquivo] of arquivos.entries()) {
     await ctx.replyWithDocument(
       new InputFile(arquivo.conteudo, arquivo.nomeArquivo),
-      i === 0 ? { caption: cortarLegenda(legenda) } : {},
+      i === 0 ? { caption: legenda } : {},
     );
   }
 }
@@ -138,13 +140,14 @@ async function enviarDocumentos(
 export async function responder(
   ctx: CtxResposta,
   resultado: ResultadoProcessamento,
+  hoje: string,
   transcricao?: string,
 ): Promise<void> {
   const comVoz = (texto: string) =>
     transcricao === undefined ? texto : comTranscricao(transcricao, texto);
   switch (resultado.tipo) {
     case 'registro':
-      await ctx.reply(comVoz(formatarRegistro(resultado.gastos)), {
+      await ctx.reply(comVoz(formatarRegistro(resultado.gastos, hoje)), {
         reply_markup: tecladoDesfazer(resultado.registroId),
       });
       return;
@@ -161,7 +164,7 @@ export async function responder(
       );
       return;
     case 'ultimos':
-      await ctx.reply(comVoz(formatarUltimos(resultado.gastos)));
+      await ctx.reply(comVoz(formatarUltimos(resultado.gastos, hoje)));
       return;
   }
 }
@@ -181,6 +184,7 @@ async function processarTexto(
     await responder(
       ctx,
       await deps.processar.executar({ tipo: 'texto', texto }),
+      hojeDe(deps),
     );
   } catch (erro) {
     await responderErro(ctx, erro, deps, onde);
@@ -194,7 +198,7 @@ export async function tratarTexto(
   const texto = ctx.msg.text.trim();
   if (texto === '') return;
   if (texto.startsWith('/')) {
-    await ctx.reply(TEXTO_AJUDA);
+    await ctx.reply(MENSAGEM_COMANDO_DESCONHECIDO);
     return;
   }
   await processarTexto(ctx, texto, deps, 'tratarTexto');
@@ -231,7 +235,7 @@ export async function tratarVoz(
       audio,
       mimeType: 'audio/ogg',
     });
-    await responder(ctx, resultado, resultado.textoOriginal);
+    await responder(ctx, resultado, hojeDe(deps), resultado.textoOriginal);
   } catch (erro) {
     const ouvido =
       erro instanceof NenhumGastoEncontradoError
@@ -251,7 +255,7 @@ export async function tratarComandoExportar(
 ): Promise<void> {
   const argumento = ctx.match.trim();
   if (argumento === '') {
-    await ctx.reply('Qual mês você quer exportar?', {
+    await ctx.reply(MENSAGEM_ESCOLHER_MES_EXPORTAR, {
       reply_markup: new InlineKeyboard()
         .text('Mês atual', montarCallbackExportar(0))
         .text('Mês anterior', montarCallbackExportar(-1)),
@@ -266,12 +270,14 @@ export async function tratarComandoExportar(
   );
 }
 
+const MES_AAAA_MM = /^\d{4}-\d{2}$/;
+
 export async function tratarComandoResumo(
   ctx: CtxComando,
   deps: DepsTelegram,
 ): Promise<void> {
   const argumento = ctx.match.trim();
-  if (argumento !== '') {
+  if (argumento !== '' && !MES_AAAA_MM.test(argumento)) {
     await processarTexto(
       ctx,
       `resumo ${argumento}`,
@@ -281,9 +287,9 @@ export async function tratarComandoResumo(
     return;
   }
   try {
-    const { periodo, resumo } = await deps.resumir.executar({
-      mesRelativo: 0,
-    });
+    const { periodo, resumo } = await deps.resumir.executar(
+      argumento === '' ? { mesRelativo: 0 } : { mes: argumento },
+    );
     await ctx.reply(formatarResumo(periodo, resumo));
   } catch (erro) {
     await responderErro(ctx, erro, deps, 'tratarComandoResumo');
@@ -295,7 +301,9 @@ export async function tratarComandoUltimos(
   deps: DepsTelegram,
 ): Promise<void> {
   try {
-    await ctx.reply(formatarUltimos(await deps.listarUltimos.executar()));
+    await ctx.reply(
+      formatarUltimos(await deps.listarUltimos.executar(), hojeDe(deps)),
+    );
   } catch (erro) {
     await responderErro(ctx, erro, deps, 'tratarComandoUltimos');
   }
@@ -315,14 +323,14 @@ export async function tratarDesfazer(
     removidos = await deps.desfazer.executar(registroId);
   } catch (erro) {
     logarSeInesperado(erro, deps, 'tratarDesfazer');
-    await ctx.answerCallbackQuery(mensagemDeErro(erro));
+    await ctx.answerCallbackQuery(semTags(mensagemDeErro(erro)));
     return;
   }
   // O registro já foi decidido: falha ao editar a mensagem não pode virar "erro".
   try {
     if (removidos > 0) {
       const original = ctx.callbackQuery.message?.text ?? '';
-      await ctx.editMessageText(`${original}\n\n↩️ Registro desfeito`.trim());
+      await ctx.editMessageText(formatarDesfeito(original));
     } else {
       await ctx.editMessageReplyMarkup();
     }
