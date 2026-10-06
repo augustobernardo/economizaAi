@@ -3,7 +3,7 @@
 **English** | [Português](./README.pt-BR.md)
 
 [![CI (main)](https://github.com/augustobernardo/economizaAi/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/augustobernardo/economizaAi/actions/workflows/ci.yml?query=branch%3Amain)
-[![CI (develop)](https://github.com/augustobernardo/economizaAi/actions/workflows/ci.yml/badge.svg?branch=develop)](https://github.com/augustobernardo/economizaAi/actions/workflows/ci.yml?query=branch%3Adevelop)
+[![CI develop (develop)](https://github.com/augustobernardo/economizaAi/actions/workflows/ci.yml/badge.svg?branch=develop)](https://github.com/augustobernardo/economizaAi/actions/workflows/ci.yml?query=branch%3Adevelop)
 [![Node.js 24](https://img.shields.io/badge/Node.js-24-5FA04E?logo=nodedotjs&logoColor=white)](https://nodejs.org/)
 [![TypeScript strict](https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![NestJS 12](https://img.shields.io/badge/NestJS-12-E0234E?logo=nestjs&logoColor=white)](https://nestjs.com/)
