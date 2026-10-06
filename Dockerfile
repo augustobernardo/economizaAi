@@ -1,19 +1,19 @@
 # node 24-alpine (digest atualizado pelo Dependabot)
 FROM node:24-alpine@sha256:ebfe2f90462722a7a4de65e91990e97fe0d401c70e0e762c5b53302f905ec1c1 AS base
-ENV CI=true
+ENV CI=true npm_config_store_dir=/root/.local/share/pnpm/store
 RUN corepack enable
 WORKDIR /app
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 
 # --ignore-scripts: sem .git o `prepare` (husky) não tem o que fazer.
 FROM base AS build
-RUN pnpm install --frozen-lockfile --ignore-scripts
+RUN --mount=type=cache,id=pnpm-store,target=/root/.local/share/pnpm/store pnpm install --frozen-lockfile --ignore-scripts
 COPY tsconfig.json tsconfig.build.json nest-cli.json ./
 COPY src ./src
 RUN pnpm build
 
 FROM base AS deps
-RUN pnpm install --prod --frozen-lockfile --ignore-scripts
+RUN --mount=type=cache,id=pnpm-store,target=/root/.local/share/pnpm/store pnpm install --prod --frozen-lockfile --ignore-scripts
 
 FROM node:24-alpine@sha256:ebfe2f90462722a7a4de65e91990e97fe0d401c70e0e762c5b53302f905ec1c1
 ENV NODE_ENV=production TZ=America/Sao_Paulo
