@@ -156,7 +156,6 @@ verificados pelo commitlint. As regras completas estão no
 - [ROADMAP.md](./ROADMAP.md): roteiro por etapas e status
 - [SECURITY.md](./SECURITY.md): modelo de ameaças, controles e gate de segurança
 - [CLAUDE.md](./CLAUDE.md): contexto, arquitetura e regras de trabalho
-- [docs/superpowers/specs/](./docs/superpowers/specs/): specs de design de cada etapa
 
 ## Licença
 

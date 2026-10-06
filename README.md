@@ -165,7 +165,6 @@ These documents are written in Portuguese:
 - [ROADMAP.md](./ROADMAP.md): stage-by-stage plan and status
 - [SECURITY.md](./SECURITY.md): threat model, controls and security gate
 - [CLAUDE.md](./CLAUDE.md): context, architecture and working rules
-- [docs/superpowers/specs/](./docs/superpowers/specs/): design specs for each stage
 
 ## License
 

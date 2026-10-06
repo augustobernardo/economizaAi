@@ -44,3 +44,6 @@ temp/
 # Ferramentas locais do agente (não versionadas)
 .claude/skills/
 .claude/worktrees/
+
+# Specs e planos dos agentes (só locais)
+/docs/superpowers/
