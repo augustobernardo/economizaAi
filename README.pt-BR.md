@@ -153,8 +153,6 @@ verificados pelo commitlint. As regras completas estão no
 
 ## Documentação
 
-- [ROADMAP.md](./ROADMAP.md): roteiro por etapas e status
-- [SECURITY.md](./SECURITY.md): modelo de ameaças, controles e gate de segurança
 - [CLAUDE.md](./CLAUDE.md): contexto, arquitetura e regras de trabalho
 
 ## Licença

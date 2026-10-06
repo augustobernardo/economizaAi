@@ -47,3 +47,9 @@ temp/
 
 # Specs e planos dos agentes (só locais)
 /docs/superpowers/
+
+# Documentos internos (só locais)
+/SECURITY.md
+/ROADMAP.md
+/PROMPT_INICIAL.md
+/docs/deploy.md
