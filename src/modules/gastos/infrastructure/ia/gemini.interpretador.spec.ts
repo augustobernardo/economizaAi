@@ -9,16 +9,20 @@ import { ValorAcimaDoTetoError } from '../../domain/errors.js';
 import { Gasto } from '../../domain/gasto.js';
 import {
   GeminiInterpretador,
+  MAX_TOKENS_SAIDA,
   type ModelosGemini,
 } from './gemini.interpretador.js';
 import {
   INSTRUCAO_AUDIO,
   instrucaoDeSistema,
   mensagemDoUsuario,
+  VERSOES_PROMPT,
 } from './prompt.js';
 import {
   respostaInterpretacaoAudioJsonSchema,
+  respostaInterpretacaoAudioJsonSchemaV5,
   respostaInterpretacaoJsonSchema,
+  respostaInterpretacaoJsonSchemaV5,
 } from './schema.js';
 
 const DATA = new Date('2026-10-03T15:00:00Z');
@@ -71,11 +75,62 @@ describe('GeminiInterpretador', () => {
       config: {
         systemInstruction: instrucaoDeSistema(DATA),
         temperature: 0,
+        maxOutputTokens: MAX_TOKENS_SAIDA,
         responseMimeType: 'application/json',
-        responseJsonSchema: respostaInterpretacaoJsonSchema,
+        responseJsonSchema: respostaInterpretacaoJsonSchemaV5,
       },
     });
+    expect(MAX_TOKENS_SAIDA).toBe(2048);
   });
+
+  it('usa a versão de prompt informada no construtor', async () => {
+    const generateContent = vi.fn(async () => ({ text: resp({ gastos: [] }) }));
+    const versionado = new GeminiInterpretador(
+      { generateContent } as unknown as ModelosGemini,
+      'modelo-x',
+      'v1',
+    );
+
+    await interpretarTexto(versionado);
+
+    expect(generateContent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        config: expect.objectContaining({
+          systemInstruction: VERSOES_PROMPT.v1(DATA, 'texto'),
+        }),
+      }),
+    );
+  });
+
+  it.each(['texto', 'audio'] as const)(
+    'v5 envia o JSON Schema com descrições (%s)',
+    async (tipo) => {
+      const generateContent = vi.fn(async () => ({
+        text: resp(tipo === 'audio' ? { transcricao: 'x' } : {}),
+      }));
+      const v5 = new GeminiInterpretador(
+        { generateContent } as unknown as ModelosGemini,
+        'modelo-x',
+        'v5',
+      );
+      await (tipo === 'texto'
+        ? interpretarTexto(v5)
+        : v5.interpretar(
+            { tipo: 'audio', audio: Buffer.from('a'), mimeType: 'audio/ogg' },
+            DATA,
+          ));
+      expect(generateContent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          config: expect.objectContaining({
+            responseJsonSchema:
+              tipo === 'texto'
+                ? respostaInterpretacaoJsonSchemaV5
+                : respostaInterpretacaoAudioJsonSchemaV5,
+          }),
+        }),
+      );
+    },
+  );
 
   it('devolve os gastos e o texto original', async () => {
     const { interpretador } = criar({ text: resp({ gastos: [GASTO] }) });
@@ -239,8 +294,9 @@ describe('GeminiInterpretador', () => {
         config: {
           systemInstruction: instrucaoDeSistema(DATA, 'audio'),
           temperature: 0,
+          maxOutputTokens: MAX_TOKENS_SAIDA,
           responseMimeType: 'application/json',
-          responseJsonSchema: respostaInterpretacaoAudioJsonSchema,
+          responseJsonSchema: respostaInterpretacaoAudioJsonSchemaV5,
         },
       });
     });
