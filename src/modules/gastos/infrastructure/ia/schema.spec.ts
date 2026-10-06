@@ -89,6 +89,14 @@ describe('respostaInterpretacaoSchema', () => {
     expect(respostaInterpretacaoSchema.safeParse(entrada).success).toBe(true);
   });
 
+  it('aceita emoji composto (ZWJ U+200D)', () => {
+    const entrada = {
+      ...base,
+      gastos: [{ ...gasto, descricao: 'Passeio 👨\u200D👩\u200D👧' }],
+    };
+    expect(respostaInterpretacaoSchema.safeParse(entrada).success).toBe(true);
+  });
+
   it('JSON Schema não tem $schema e exige intencao, gastos, inicio e fim', () => {
     expect(respostaInterpretacaoJsonSchema).not.toHaveProperty('$schema');
     expect(respostaInterpretacaoJsonSchema).toMatchObject({

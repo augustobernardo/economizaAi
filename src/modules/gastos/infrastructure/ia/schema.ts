@@ -2,7 +2,8 @@ import { z } from 'zod';
 import { CATEGORIAS } from '../../domain/categoria.js';
 
 // Recusa controle (Cc) e formatação/bidi (Cf): o texto chega a respostas e exportações.
-const textoLimpo = /^[^\p{Cc}\p{Cf}]*$/u;
+// Exceção: U+200D (ZWJ), necessário para emoji compostos como 👨‍👩‍👧.
+const textoLimpo = /^(?:[^\p{Cc}\p{Cf}]|\u200D)*$/u;
 // refine (não regex): toJSONSchema não emite refinements, e o Gemini pode recusar `\p{..}`.
 const limpo = (t: string) => textoLimpo.test(t);
 const msgTexto = { message: 'texto com caracteres de controle ou bidi' };
