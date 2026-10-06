@@ -158,7 +158,7 @@ jobs:
 
   deploy:
     name: deploy
-    needs: [ci, gitleaks]
+    needs: [release]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -173,7 +173,7 @@ jobs:
           CF_ACCESS_CLIENT_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
           CF_ACCESS_CLIENT_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
         run: |
-          # Easypanel builds the HEAD of main, so deploy only if it is the tested commit (ponytail: push between check and pull still races).
+          # Easypanel pulls :main from GHCR; deploy only if main is still this commit, so :main is this run's image (ponytail: push between check and pull still races).
           head=$(git ls-remote "https://github.com/${GITHUB_REPOSITORY}" refs/heads/main | cut -f1)
           if [ -z "${head}" ]; then
             echo "::error::could not resolve main head"
