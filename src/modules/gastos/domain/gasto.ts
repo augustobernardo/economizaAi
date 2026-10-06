@@ -1,4 +1,9 @@
 import type { Categoria } from './categoria.js';
+import {
+  ehDataCivilValida,
+  hojeEmSaoPaulo,
+  subtrairAnos,
+} from './data-civil.js';
 import type { Dinheiro } from './dinheiro.js';
 import {
   DataForaDaJanelaError,
@@ -42,64 +47,23 @@ export interface PropsRestaurarGasto {
   registroId: string;
 }
 
-/** Formata uma data para `YYYY-MM-DD` no fuso de São Paulo. */
-function dataEmSaoPaulo(data: Date): string {
-  return new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'America/Sao_Paulo',
-  }).format(data);
-}
-
-/**
- * Formata os componentes UTC de uma data como `YYYY-MM-DD`, sem conversão de
- * fuso. Usado para aritmética de calendário (ex.: "1 ano atrás") sobre uma
- * data civil já resolvida, para não reintroduzir erro de fuso ao reconverter.
- */
-function formatarDataUTC(data: Date): string {
-  const ano = String(data.getUTCFullYear()).padStart(4, '0');
-  const mes = String(data.getUTCMonth() + 1).padStart(2, '0');
-  const dia = String(data.getUTCDate()).padStart(2, '0');
-  return `${ano}-${mes}-${dia}`;
-}
-
 /** Valida o formato `YYYY-MM-DD` e que a data representa um dia real do calendário. */
 function validarFormatoData(dataGasto: string): void {
-  const resultado = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dataGasto);
-  if (!resultado) {
-    throw new DataInvalidaError(`Data inválida: "${dataGasto}"`);
-  }
-
-  const [, anoStr, mesStr, diaStr] = resultado;
-  const ano = Number(anoStr);
-  const mes = Number(mesStr);
-  const dia = Number(diaStr);
-  const data = new Date(Date.UTC(ano, mes - 1, dia));
-
-  const ehDataReal =
-    data.getUTCFullYear() === ano &&
-    data.getUTCMonth() === mes - 1 &&
-    data.getUTCDate() === dia;
-
-  if (!ehDataReal) {
+  if (!ehDataCivilValida(dataGasto)) {
     throw new DataInvalidaError(`Data inválida: "${dataGasto}"`);
   }
 }
 
 /** `dataGasto` não pode ser futura nem anterior à janela de 1 ano, ambas em America/Sao_Paulo. */
 function validarJanelaData(dataGasto: string, agora: Date): void {
-  const hoje = dataEmSaoPaulo(agora);
+  const hoje = hojeEmSaoPaulo(agora);
   if (dataGasto > hoje) {
     throw new DataFuturaError(
       `Data do gasto "${dataGasto}" é posterior a hoje ("${hoje}")`,
     );
   }
 
-  const partesHoje = hoje.split('-');
-  const ano = Number(partesHoje[0]);
-  const mes = Number(partesHoje[1]);
-  const dia = Number(partesHoje[2]);
-  const limiteInferior = formatarDataUTC(
-    new Date(Date.UTC(ano - JANELA_DIAS_PASSADO_EM_ANOS, mes - 1, dia)),
-  );
+  const limiteInferior = subtrairAnos(hoje, JANELA_DIAS_PASSADO_EM_ANOS);
   if (dataGasto < limiteInferior) {
     throw new DataForaDaJanelaError(
       `Data do gasto "${dataGasto}" é anterior à janela permitida ("${limiteInferior}")`,

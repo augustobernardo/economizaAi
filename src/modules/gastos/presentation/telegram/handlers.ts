@@ -1,18 +1,34 @@
-import { InlineKeyboard } from 'grammy';
+import { InlineKeyboard, InputFile } from 'grammy';
 import { NenhumGastoEncontradoError } from '../../application/errors.js';
+import type { ArquivoExportado } from '../../application/ports/exportador.js';
 import type { DesfazerRegistroUseCase } from '../../application/use-cases/desfazer-registro.use-case.js';
-import type { RegistrarGastosUseCase } from '../../application/use-cases/registrar-gastos.use-case.js';
+import type { ExportarGastosUseCase } from '../../application/use-cases/exportar-gastos.use-case.js';
+import type { ListarUltimosGastosUseCase } from '../../application/use-cases/listar-ultimos-gastos.use-case.js';
+import type {
+  ProcessarMensagemUseCase,
+  ResultadoProcessamento,
+} from '../../application/use-cases/processar-mensagem.use-case.js';
+import type { ResumirGastosUseCase } from '../../application/use-cases/resumir-gastos.use-case.js';
 import {
   MAX_BYTES_AUDIO,
   MAX_CARACTERES_TEXTO,
   MAX_DURACAO_AUDIO_S,
 } from '../limites.js';
-import { lerCallbackDesfazer, montarCallbackDesfazer } from './callback.js';
+import {
+  lerCallbackDesfazer,
+  lerCallbackExportar,
+  montarCallbackDesfazer,
+  montarCallbackExportar,
+  PREFIXO_DESFAZER,
+} from './callback.js';
 import { DownloadFalhouError } from './download.js';
 import {
+  comTranscricao,
   formatarRegistro,
-  formatarRegistroDeAudio,
+  formatarResumo,
   formatarSemGastoNoAudio,
+  formatarUltimos,
+  legendaExportacao,
   MENSAGEM_AUDIO_GRANDE,
   MENSAGEM_AUDIO_LONGO,
   MENSAGEM_NAO_SUPORTADO,
@@ -22,30 +38,41 @@ import {
 } from './formatador.js';
 
 export interface DepsTelegram {
-  registrar: Pick<RegistrarGastosUseCase, 'executar'>;
+  processar: Pick<ProcessarMensagemUseCase, 'executar'>;
+  exportar: Pick<ExportarGastosUseCase, 'executar'>;
+  resumir: Pick<ResumirGastosUseCase, 'executar'>;
+  listarUltimos: Pick<ListarUltimosGastosUseCase, 'executar'>;
   desfazer: Pick<DesfazerRegistroUseCase, 'executar'>;
   logger: { error(mensagem: string): void };
   baixarArquivo(filePath: string): Promise<Buffer>;
 }
 
-export interface CtxTexto {
-  msg: { text: string };
+/** O que os handlers usam para responder; texto puro, sem parse_mode. */
+export interface CtxResposta {
   reply(
     texto: string,
     extra?: { reply_markup?: InlineKeyboard },
   ): Promise<unknown>;
+  replyWithDocument(
+    doc: InputFile,
+    extra?: { caption?: string },
+  ): Promise<unknown>;
 }
 
-export interface CtxVoz {
+export interface CtxTexto extends CtxResposta {
+  msg: { text: string };
+}
+
+export interface CtxVoz extends CtxResposta {
   msg: { voice: { duration: number; file_size?: number } };
   getFile(): Promise<{ file_path?: string }>;
-  reply(
-    texto: string,
-    extra?: { reply_markup?: InlineKeyboard },
-  ): Promise<unknown>;
 }
 
-export interface CtxCallback {
+export interface CtxComando extends CtxResposta {
+  match: string;
+}
+
+export interface CtxCallback extends CtxResposta {
   callbackQuery: { data?: string; message?: { text?: string } };
   answerCallbackQuery(texto?: string): Promise<unknown>;
   editMessageText(texto: string): Promise<unknown>;
@@ -75,6 +102,91 @@ function logarSeInesperado(
   );
 }
 
+async function responderErro(
+  ctx: CtxResposta,
+  erro: unknown,
+  deps: DepsTelegram,
+  onde: string,
+): Promise<void> {
+  logarSeInesperado(erro, deps, onde);
+  await ctx.reply(mensagemDeErro(erro));
+}
+
+/** Limite do Telegram para legenda de documento. */
+const MAX_LEGENDA = 1024;
+
+function cortarLegenda(legenda: string): string {
+  return legenda.length > MAX_LEGENDA
+    ? `${legenda.slice(0, MAX_LEGENDA - 1)}…`
+    : legenda;
+}
+
+async function enviarDocumentos(
+  ctx: CtxResposta,
+  arquivos: readonly ArquivoExportado[],
+  legenda: string,
+): Promise<void> {
+  for (const [i, arquivo] of arquivos.entries()) {
+    await ctx.replyWithDocument(
+      new InputFile(arquivo.conteudo, arquivo.nomeArquivo),
+      i === 0 ? { caption: cortarLegenda(legenda) } : {},
+    );
+  }
+}
+
+/** Traduz o resultado em resposta; `transcricao` (voz) prefixa o texto ou a legenda. */
+export async function responder(
+  ctx: CtxResposta,
+  resultado: ResultadoProcessamento,
+  transcricao?: string,
+): Promise<void> {
+  const comVoz = (texto: string) =>
+    transcricao === undefined ? texto : comTranscricao(transcricao, texto);
+  switch (resultado.tipo) {
+    case 'registro':
+      await ctx.reply(comVoz(formatarRegistro(resultado.gastos)), {
+        reply_markup: tecladoDesfazer(resultado.registroId),
+      });
+      return;
+    case 'exportacao':
+      await enviarDocumentos(
+        ctx,
+        resultado.arquivos,
+        comVoz(legendaExportacao(resultado.periodo, resultado.quantidade)),
+      );
+      return;
+    case 'resumo':
+      await ctx.reply(
+        comVoz(formatarResumo(resultado.periodo, resultado.resumo)),
+      );
+      return;
+    case 'ultimos':
+      await ctx.reply(comVoz(formatarUltimos(resultado.gastos)));
+      return;
+  }
+}
+
+/** Texto já sem espaços nas pontas: aplica o limite, processa e responde. */
+async function processarTexto(
+  ctx: CtxResposta,
+  texto: string,
+  deps: DepsTelegram,
+  onde: string,
+): Promise<void> {
+  if (texto.length > MAX_CARACTERES_TEXTO) {
+    await ctx.reply(MENSAGEM_TEXTO_LONGO);
+    return;
+  }
+  try {
+    await responder(
+      ctx,
+      await deps.processar.executar({ tipo: 'texto', texto }),
+    );
+  } catch (erro) {
+    await responderErro(ctx, erro, deps, onde);
+  }
+}
+
 export async function tratarTexto(
   ctx: CtxTexto,
   deps: DepsTelegram,
@@ -85,22 +197,7 @@ export async function tratarTexto(
     await ctx.reply(TEXTO_AJUDA);
     return;
   }
-  if (texto.length > MAX_CARACTERES_TEXTO) {
-    await ctx.reply(MENSAGEM_TEXTO_LONGO);
-    return;
-  }
-  try {
-    const { registroId, gastos } = await deps.registrar.executar({
-      tipo: 'texto',
-      texto,
-    });
-    await ctx.reply(formatarRegistro(gastos), {
-      reply_markup: tecladoDesfazer(registroId),
-    });
-  } catch (erro) {
-    logarSeInesperado(erro, deps, 'tratarTexto');
-    await ctx.reply(mensagemDeErro(erro));
-  }
+  await processarTexto(ctx, texto, deps, 'tratarTexto');
 }
 
 async function baixarVoz(ctx: CtxVoz, deps: DepsTelegram): Promise<Buffer> {
@@ -129,16 +226,12 @@ export async function tratarVoz(
   }
   try {
     const audio = await baixarVoz(ctx, deps);
-    const { registroId, gastos, textoOriginal } = await deps.registrar.executar(
-      {
-        tipo: 'audio',
-        audio,
-        mimeType: 'audio/ogg',
-      },
-    );
-    await ctx.reply(formatarRegistroDeAudio(textoOriginal, gastos), {
-      reply_markup: tecladoDesfazer(registroId),
+    const resultado = await deps.processar.executar({
+      tipo: 'audio',
+      audio,
+      mimeType: 'audio/ogg',
     });
+    await responder(ctx, resultado, resultado.textoOriginal);
   } catch (erro) {
     const ouvido =
       erro instanceof NenhumGastoEncontradoError
@@ -148,8 +241,63 @@ export async function tratarVoz(
       await ctx.reply(formatarSemGastoNoAudio(ouvido));
       return;
     }
-    logarSeInesperado(erro, deps, 'tratarVoz');
-    await ctx.reply(mensagemDeErro(erro));
+    await responderErro(ctx, erro, deps, 'tratarVoz');
+  }
+}
+
+export async function tratarComandoExportar(
+  ctx: CtxComando,
+  deps: DepsTelegram,
+): Promise<void> {
+  const argumento = ctx.match.trim();
+  if (argumento === '') {
+    await ctx.reply('Qual mês você quer exportar?', {
+      reply_markup: new InlineKeyboard()
+        .text('Mês atual', montarCallbackExportar(0))
+        .text('Mês anterior', montarCallbackExportar(-1)),
+    });
+    return;
+  }
+  await processarTexto(
+    ctx,
+    `exportar ${argumento}`,
+    deps,
+    'tratarComandoExportar',
+  );
+}
+
+export async function tratarComandoResumo(
+  ctx: CtxComando,
+  deps: DepsTelegram,
+): Promise<void> {
+  const argumento = ctx.match.trim();
+  if (argumento !== '') {
+    await processarTexto(
+      ctx,
+      `resumo ${argumento}`,
+      deps,
+      'tratarComandoResumo',
+    );
+    return;
+  }
+  try {
+    const { periodo, resumo } = await deps.resumir.executar({
+      mesRelativo: 0,
+    });
+    await ctx.reply(formatarResumo(periodo, resumo));
+  } catch (erro) {
+    await responderErro(ctx, erro, deps, 'tratarComandoResumo');
+  }
+}
+
+export async function tratarComandoUltimos(
+  ctx: CtxResposta,
+  deps: DepsTelegram,
+): Promise<void> {
+  try {
+    await ctx.reply(formatarUltimos(await deps.listarUltimos.executar()));
+  } catch (erro) {
+    await responderErro(ctx, erro, deps, 'tratarComandoUltimos');
   }
 }
 
@@ -184,6 +332,48 @@ export async function tratarDesfazer(
   await ctx.answerCallbackQuery(
     removidos > 0 ? 'Desfeito' : 'Nada para desfazer (expirado ou já desfeito)',
   );
+}
+
+async function tratarExportarDoBotao(
+  ctx: CtxCallback,
+  mesRelativo: 0 | -1,
+  deps: DepsTelegram,
+): Promise<void> {
+  // Responde antes de gerar: tira o spinner do botão. É cosmético: um callback
+  // velho ("query is too old") não pode abortar a exportação.
+  await ctx.answerCallbackQuery('Gerando arquivos…').catch(() => undefined);
+  try {
+    const { periodo, quantidade, arquivos } = await deps.exportar.executar({
+      mesRelativo,
+    });
+    await enviarDocumentos(
+      ctx,
+      arquivos,
+      legendaExportacao(periodo, quantidade),
+    );
+  } catch (erro) {
+    logarSeInesperado(erro, deps, 'tratarCallback');
+    // O callback já foi respondido: o erro vai para o chat.
+    await ctx.reply(mensagemDeErro(erro));
+  }
+}
+
+/** Roteia o callback pelo prefixo; qualquer outra coisa é "Ação inválida". */
+export async function tratarCallback(
+  ctx: CtxCallback,
+  deps: DepsTelegram,
+): Promise<void> {
+  const data = ctx.callbackQuery.data;
+  if (data?.startsWith(PREFIXO_DESFAZER)) {
+    await tratarDesfazer(ctx, deps);
+    return;
+  }
+  const mesRelativo = lerCallbackExportar(data);
+  if (mesRelativo === null) {
+    await ctx.answerCallbackQuery('Ação inválida');
+    return;
+  }
+  await tratarExportarDoBotao(ctx, mesRelativo, deps);
 }
 
 export async function tratarNaoSuportado(ctx: {

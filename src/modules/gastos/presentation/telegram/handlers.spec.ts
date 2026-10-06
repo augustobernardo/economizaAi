@@ -1,13 +1,21 @@
+import { InputFile } from 'grammy';
 import { describe, expect, it, vi } from 'vitest';
 import { umGasto } from '../../../../../test/builders/gasto.builder.js';
 import {
   NenhumGastoEncontradoError,
+  NenhumGastoNoPeriodoError,
   ProvedorIndisponivelError,
 } from '../../application/errors.js';
+import type { ResultadoProcessamento } from '../../application/use-cases/processar-mensagem.use-case.js';
+import { Periodo } from '../../domain/periodo.js';
+import { resumir } from '../../domain/resumo.js';
 import { DownloadFalhouError } from './download.js';
 import { montarCallbackDesfazer } from './callback.js';
 import {
+  comTranscricao,
+  formatarResumo,
   formatarSemGastoNoAudio,
+  formatarUltimos,
   MENSAGEM_AUDIO_GRANDE,
   MENSAGEM_AUDIO_LONGO,
   MENSAGEM_TEXTO_LONGO,
@@ -20,6 +28,10 @@ import {
   MAX_DURACAO_AUDIO_S,
 } from '../limites.js';
 import {
+  tratarCallback,
+  tratarComandoExportar,
+  tratarComandoResumo,
+  tratarComandoUltimos,
   tratarDesfazer,
   tratarTexto,
   tratarVoz,
@@ -27,16 +39,60 @@ import {
 } from './handlers.js';
 
 const REGISTRO = '3f1c2a9e-8b7d-4c6e-9a1b-2d3e4f5a6b7c';
+const AGOSTO = Periodo.criar('2026-08-01', '2026-08-31', '2026-10-04');
+const GASTOS = [
+  umGasto().comValor(10).build(),
+  umGasto().comValor(20).comDescricao('Uber').build(),
+];
+const ARQUIVOS = [
+  {
+    nomeArquivo: 'economizaai-2026-08.csv',
+    conteudo: Buffer.from('csv'),
+    mimeType: 'text/csv; charset=utf-8',
+    formato: 'csv' as const,
+  },
+  {
+    nomeArquivo: 'economizaai-2026-08.md',
+    conteudo: Buffer.from('md'),
+    mimeType: 'text/markdown; charset=utf-8',
+    formato: 'md' as const,
+  },
+];
+
+function processando(resultado: ResultadoProcessamento) {
+  return { executar: vi.fn(async () => resultado) };
+}
+
+function falhando(erro: Error) {
+  return {
+    executar: vi.fn(async (): Promise<never> => {
+      throw erro;
+    }),
+  };
+}
 
 function deps(parcial: Partial<DepsTelegram> = {}): DepsTelegram {
   return {
-    registrar: {
+    processar: processando({
+      tipo: 'registro',
+      registroId: REGISTRO,
+      gastos: [umGasto().comValor(10).build()],
+      textoOriginal: 'gastei 10',
+    }),
+    exportar: {
       executar: vi.fn(async () => ({
-        registroId: REGISTRO,
-        gastos: [umGasto().comValor(10).build()],
-        textoOriginal: 'gastei 10',
+        periodo: AGOSTO,
+        quantidade: 2,
+        arquivos: ARQUIVOS,
       })),
     },
+    resumir: {
+      executar: vi.fn(async () => ({
+        periodo: AGOSTO,
+        resumo: resumir(GASTOS),
+      })),
+    },
+    listarUltimos: { executar: vi.fn(async () => GASTOS) },
     desfazer: { executar: vi.fn(async () => 1) },
     logger: { error: vi.fn() },
     baixarArquivo: vi.fn(async () => Buffer.from('ogg')),
@@ -44,17 +100,44 @@ function deps(parcial: Partial<DepsTelegram> = {}): DepsTelegram {
   };
 }
 
+function respostas() {
+  return {
+    reply: vi.fn(async (_texto: string, _extra?: unknown) => undefined),
+    replyWithDocument: vi.fn(
+      async (_doc: InputFile, _extra?: { caption?: string }) => undefined,
+    ),
+  };
+}
+
 function ctxTexto(text: string) {
-  return { msg: { text }, reply: vi.fn(async () => undefined) };
+  return { msg: { text }, ...respostas() };
+}
+
+function ctxComando(match: string) {
+  return { match, ...respostas() };
 }
 
 function ctxCallback(data: string | undefined) {
   return {
     callbackQuery: { data, message: { text: '✅ 1 gasto registrado' } },
-    answerCallbackQuery: vi.fn(async () => true),
+    answerCallbackQuery: vi.fn(async (_texto?: string) => true),
     editMessageText: vi.fn(async () => true),
     editMessageReplyMarkup: vi.fn(async () => true),
+    ...respostas(),
   };
+}
+
+type Teclado = {
+  reply_markup: {
+    inline_keyboard: { text: string; callback_data: string }[][];
+  };
+};
+
+function documentosEnviados(ctx: ReturnType<typeof respostas>) {
+  return ctx.replyWithDocument.mock.calls.map(([doc, extra]) => ({
+    nome: doc.filename,
+    caption: extra?.caption,
+  }));
 }
 
 describe('tratarTexto', () => {
@@ -64,7 +147,7 @@ describe('tratarTexto', () => {
 
     await tratarTexto(ctx, d);
 
-    expect(d.registrar.executar).toHaveBeenCalledWith({
+    expect(d.processar.executar).toHaveBeenCalledWith({
       tipo: 'texto',
       texto: 'gastei 10',
     });
@@ -88,21 +171,21 @@ describe('tratarTexto', () => {
     const d = deps();
     const ctx = ctxTexto('x'.repeat(MAX_CARACTERES_TEXTO + 1));
     await tratarTexto(ctx, d);
-    expect(d.registrar.executar).not.toHaveBeenCalled();
+    expect(d.processar.executar).not.toHaveBeenCalled();
     expect(ctx.reply).toHaveBeenCalledWith(MENSAGEM_TEXTO_LONGO);
   });
 
   it('texto no limite exato é aceito', async () => {
     const d = deps();
     await tratarTexto(ctxTexto('x'.repeat(MAX_CARACTERES_TEXTO)), d);
-    expect(d.registrar.executar).toHaveBeenCalledOnce();
+    expect(d.processar.executar).toHaveBeenCalledOnce();
   });
 
   it('texto só com espaços é ignorado', async () => {
     const d = deps();
     const ctx = ctxTexto('   ');
     await tratarTexto(ctx, d);
-    expect(d.registrar.executar).not.toHaveBeenCalled();
+    expect(d.processar.executar).not.toHaveBeenCalled();
     expect(ctx.reply).not.toHaveBeenCalled();
   });
 
@@ -110,17 +193,13 @@ describe('tratarTexto', () => {
     const d = deps();
     const ctx = ctxTexto('/xyz');
     await tratarTexto(ctx, d);
-    expect(d.registrar.executar).not.toHaveBeenCalled();
+    expect(d.processar.executar).not.toHaveBeenCalled();
     expect(ctx.reply).toHaveBeenCalledWith(TEXTO_AJUDA);
   });
 
   it('erro conhecido vira mensagem amigável sem log de erro', async () => {
     const d = deps({
-      registrar: {
-        executar: vi.fn(async () => {
-          throw new ProvedorIndisponivelError('x');
-        }),
-      },
+      processar: falhando(new ProvedorIndisponivelError('x')),
     });
     const ctx = ctxTexto('gastei 10');
     await tratarTexto(ctx, d);
@@ -132,11 +211,7 @@ describe('tratarTexto', () => {
 
   it('log de erro desconhecido não vaza a message do erro', async () => {
     const d = deps({
-      registrar: {
-        executar: vi.fn(async () => {
-          throw new Error('falhou com: meu texto privado');
-        }),
-      },
+      processar: falhando(new Error('falhou com: meu texto privado')),
     });
     await tratarTexto(ctxTexto('meu texto privado'), d);
     expect(JSON.stringify(vi.mocked(d.logger.error).mock.calls)).not.toContain(
@@ -146,11 +221,7 @@ describe('tratarTexto', () => {
 
   it('erro desconhecido é logado sem o texto do usuário', async () => {
     const d = deps({
-      registrar: {
-        executar: vi.fn(async () => {
-          throw new Error('boom');
-        }),
-      },
+      processar: falhando(new Error('boom')),
     });
     const ctx = ctxTexto('meu texto privado');
     await tratarTexto(ctx, d);
@@ -238,7 +309,7 @@ function ctxVoz(
   return {
     msg: { voice },
     getFile: vi.fn(async () => ({ file_path: filePath ?? undefined })),
-    reply: vi.fn(async () => undefined),
+    ...respostas(),
   };
 }
 
@@ -252,7 +323,7 @@ describe('tratarVoz', () => {
     await tratarVoz(ctx, d);
 
     expect(d.baixarArquivo).toHaveBeenCalledWith('voice/f.oga');
-    expect(d.registrar.executar).toHaveBeenCalledWith({
+    expect(d.processar.executar).toHaveBeenCalledWith({
       tipo: 'audio',
       audio: Buffer.from('ogg'),
       mimeType: 'audio/ogg',
@@ -296,11 +367,7 @@ describe('tratarVoz', () => {
 
   it('sem gasto mostra o que foi ouvido', async () => {
     const d = deps({
-      registrar: {
-        executar: vi.fn(async () => {
-          throw new NenhumGastoEncontradoError('x', 'bom dia');
-        }),
-      },
+      processar: falhando(new NenhumGastoEncontradoError('x', 'bom dia')),
     });
     const ctx = ctxVoz({ duration: 3 });
     await tratarVoz(ctx, d);
@@ -309,11 +376,7 @@ describe('tratarVoz', () => {
 
   it('sem gasto e sem fala → mensagem padrão', async () => {
     const d = deps({
-      registrar: {
-        executar: vi.fn(async () => {
-          throw new NenhumGastoEncontradoError('x', '');
-        }),
-      },
+      processar: falhando(new NenhumGastoEncontradoError('x', '')),
     });
     const ctx = ctxVoz({ duration: 3 });
     await tratarVoz(ctx, d);
@@ -324,11 +387,7 @@ describe('tratarVoz', () => {
 
   it('transcrição só com espaços → mensagem padrão', async () => {
     const d = deps({
-      registrar: {
-        executar: vi.fn(async () => {
-          throw new NenhumGastoEncontradoError('x', '  ');
-        }),
-      },
+      processar: falhando(new NenhumGastoEncontradoError('x', '  ')),
     });
     const ctx = ctxVoz({ duration: 3 });
     await tratarVoz(ctx, d);
@@ -339,11 +398,7 @@ describe('tratarVoz', () => {
 
   it('erro inesperado é logado só com o nome', async () => {
     const d = deps({
-      registrar: {
-        executar: vi.fn(async () => {
-          throw new Error('texto privado');
-        }),
-      },
+      processar: falhando(new Error('texto privado')),
     });
     const ctx = ctxVoz({ duration: 3 });
     await tratarVoz(ctx, d);
@@ -365,7 +420,7 @@ describe('tratarVoz', () => {
     });
     const ctx = ctxVoz({ duration: 3 });
     await tratarVoz(ctx, d);
-    expect(d.registrar.executar).not.toHaveBeenCalled();
+    expect(d.processar.executar).not.toHaveBeenCalled();
     expect(ctx.reply).toHaveBeenCalledWith(MSG_DOWNLOAD);
     expect(d.logger.error).not.toHaveBeenCalled();
   });
@@ -388,5 +443,277 @@ describe('tratarVoz', () => {
     };
     await tratarVoz(ctx, d);
     expect(ctx.reply).toHaveBeenCalledWith(MSG_DOWNLOAD);
+  });
+});
+
+describe('respostas por tipo de resultado', () => {
+  const exportacao: ResultadoProcessamento = {
+    tipo: 'exportacao',
+    periodo: AGOSTO,
+    quantidade: 2,
+    arquivos: ARQUIVOS,
+    textoOriginal: 'exporta agosto',
+  };
+
+  it('texto → exportação envia dois documentos, legenda só no primeiro', async () => {
+    const d = deps({ processar: processando(exportacao) });
+    const ctx = ctxTexto('exporta agosto');
+
+    await tratarTexto(ctx, d);
+
+    expect(documentosEnviados(ctx)).toEqual([
+      {
+        nome: 'economizaai-2026-08.csv',
+        caption: '📁 2 gastos — agosto de 2026',
+      },
+      { nome: 'economizaai-2026-08.md', caption: undefined },
+    ]);
+    expect(ctx.replyWithDocument.mock.calls[0]![0]).toBeInstanceOf(InputFile);
+    expect(ctx.reply).not.toHaveBeenCalled();
+  });
+
+  it('voz → exportação põe a transcrição na legenda do primeiro documento', async () => {
+    const d = deps({ processar: processando(exportacao) });
+    const ctx = ctxVoz({ duration: 3 });
+
+    await tratarVoz(ctx, d);
+
+    expect(documentosEnviados(ctx)[0]!.caption).toBe(
+      comTranscricao('exporta agosto', '📁 2 gastos — agosto de 2026'),
+    );
+  });
+
+  it('voz → legenda longa é truncada em 1024 caracteres com reticências', async () => {
+    const d = deps({
+      processar: processando({
+        ...exportacao,
+        textoOriginal: 'a'.repeat(2000),
+      }),
+    });
+    const ctx = ctxVoz({ duration: 3 });
+
+    await tratarVoz(ctx, d);
+
+    const legenda = documentosEnviados(ctx)[0]!.caption!;
+    expect(legenda.length).toBeLessThanOrEqual(1024);
+    expect(legenda.endsWith('…')).toBe(true);
+  });
+
+  it('voz → resumo responde com a transcrição e o resumo', async () => {
+    const resumo = resumir(GASTOS);
+    const d = deps({
+      processar: processando({
+        tipo: 'resumo',
+        periodo: AGOSTO,
+        resumo,
+        textoOriginal: 'quanto gastei em agosto',
+      }),
+    });
+    const ctx = ctxVoz({ duration: 3 });
+
+    await tratarVoz(ctx, d);
+
+    expect(ctx.reply).toHaveBeenCalledWith(
+      comTranscricao('quanto gastei em agosto', formatarResumo(AGOSTO, resumo)),
+    );
+  });
+
+  it('texto → últimos responde com a lista', async () => {
+    const d = deps({
+      processar: processando({
+        tipo: 'ultimos',
+        gastos: GASTOS,
+        textoOriginal: 'últimos gastos',
+      }),
+    });
+    const ctx = ctxTexto('últimos gastos');
+
+    await tratarTexto(ctx, d);
+
+    expect(ctx.reply).toHaveBeenCalledWith(formatarUltimos(GASTOS));
+  });
+
+  it('nenhum gasto no período → mensagem do mês informado', async () => {
+    const d = deps({
+      processar: falhando(new NenhumGastoNoPeriodoError(AGOSTO)),
+    });
+    const ctx = ctxTexto('exporta agosto');
+
+    await tratarTexto(ctx, d);
+
+    expect(ctx.reply).toHaveBeenCalledWith(
+      'Nenhum gasto encontrado no mês informado (agosto de 2026).',
+    );
+    expect(d.logger.error).not.toHaveBeenCalled();
+  });
+});
+
+describe('comandos', () => {
+  it('/exportar sem argumento oferece os botões de mês, sem chamar a IA', async () => {
+    const d = deps();
+    const ctx = ctxComando('  ');
+
+    await tratarComandoExportar(ctx, d);
+
+    expect(d.processar.executar).not.toHaveBeenCalled();
+    const [texto, extra] = ctx.reply.mock.calls[0] as unknown as [
+      string,
+      Teclado,
+    ];
+    expect(texto).toBe('Qual mês você quer exportar?');
+    expect(
+      extra.reply_markup.inline_keyboard.flat().map((b) => b.callback_data),
+    ).toEqual(['e:0', 'e:-1']);
+  });
+
+  it('/exportar com argumento vira pedido em linguagem natural', async () => {
+    const d = deps();
+
+    await tratarComandoExportar(ctxComando(' setembro '), d);
+
+    expect(d.processar.executar).toHaveBeenCalledWith({
+      tipo: 'texto',
+      texto: 'exportar setembro',
+    });
+  });
+
+  it('/exportar com argumento longo demais não chama a IA', async () => {
+    const d = deps();
+    const ctx = ctxComando('x'.repeat(MAX_CARACTERES_TEXTO));
+
+    await tratarComandoExportar(ctx, d);
+
+    expect(d.processar.executar).not.toHaveBeenCalled();
+    expect(ctx.reply).toHaveBeenCalledWith(MENSAGEM_TEXTO_LONGO);
+  });
+
+  it('/resumo sem argumento resume o mês atual sem IA', async () => {
+    const d = deps();
+    const ctx = ctxComando('');
+
+    await tratarComandoResumo(ctx, d);
+
+    expect(d.resumir.executar).toHaveBeenCalledWith({ mesRelativo: 0 });
+    expect(d.processar.executar).not.toHaveBeenCalled();
+    expect(ctx.reply).toHaveBeenCalledWith(
+      formatarResumo(AGOSTO, resumir(GASTOS)),
+    );
+  });
+
+  it('/resumo com argumento vira pedido em linguagem natural', async () => {
+    const d = deps();
+
+    await tratarComandoResumo(ctxComando('agosto'), d);
+
+    expect(d.processar.executar).toHaveBeenCalledWith({
+      tipo: 'texto',
+      texto: 'resumo agosto',
+    });
+  });
+
+  it('/resumo sem gastos no mês responde a mensagem do período', async () => {
+    const d = deps({
+      resumir: falhando(new NenhumGastoNoPeriodoError(AGOSTO)),
+    });
+    const ctx = ctxComando('');
+
+    await tratarComandoResumo(ctx, d);
+
+    expect(ctx.reply).toHaveBeenCalledWith(
+      'Nenhum gasto encontrado no mês informado (agosto de 2026).',
+    );
+  });
+
+  it('/ultimos lista os últimos gastos sem IA', async () => {
+    const d = deps();
+    const ctx = respostas();
+
+    await tratarComandoUltimos(ctx, d);
+
+    expect(d.listarUltimos.executar).toHaveBeenCalledWith();
+    expect(ctx.reply).toHaveBeenCalledWith(formatarUltimos(GASTOS));
+  });
+});
+
+describe('tratarCallback', () => {
+  it('e:-1 exporta o mês anterior e envia os dois documentos', async () => {
+    const d = deps();
+    const ctx = ctxCallback('e:-1');
+
+    await tratarCallback(ctx, d);
+
+    expect(d.exportar.executar).toHaveBeenCalledWith({ mesRelativo: -1 });
+    expect(ctx.answerCallbackQuery).toHaveBeenCalledOnce();
+    expect(ctx.answerCallbackQuery.mock.invocationCallOrder[0]!).toBeLessThan(
+      vi.mocked(d.exportar.executar).mock.invocationCallOrder[0]!,
+    );
+    expect(documentosEnviados(ctx)).toEqual([
+      {
+        nome: 'economizaai-2026-08.csv',
+        caption: '📁 2 gastos — agosto de 2026',
+      },
+      { nome: 'economizaai-2026-08.md', caption: undefined },
+    ]);
+  });
+
+  it('e:5 é ação inválida e não exporta', async () => {
+    const d = deps();
+    const ctx = ctxCallback('e:5');
+
+    await tratarCallback(ctx, d);
+
+    expect(d.exportar.executar).not.toHaveBeenCalled();
+    expect(ctx.answerCallbackQuery).toHaveBeenCalledWith('Ação inválida');
+  });
+
+  it('prefixo desconhecido é ação inválida', async () => {
+    const d = deps();
+    const ctx = ctxCallback('x:1');
+
+    await tratarCallback(ctx, d);
+
+    expect(d.exportar.executar).not.toHaveBeenCalled();
+    expect(d.desfazer.executar).not.toHaveBeenCalled();
+    expect(ctx.answerCallbackQuery).toHaveBeenCalledWith('Ação inválida');
+  });
+
+  it('d:<uuid> continua desfazendo', async () => {
+    const d = deps();
+    const ctx = ctxCallback(montarCallbackDesfazer(REGISTRO));
+
+    await tratarCallback(ctx, d);
+
+    expect(d.desfazer.executar).toHaveBeenCalledWith(REGISTRO);
+    expect(ctx.answerCallbackQuery).toHaveBeenCalledWith('Desfeito');
+  });
+
+  it('erro na exportação avisa no chat sem responder o callback de novo', async () => {
+    const d = deps({
+      exportar: falhando(new NenhumGastoNoPeriodoError(AGOSTO)),
+    });
+    const ctx = ctxCallback('e:0');
+    const mensagem =
+      'Nenhum gasto encontrado no mês informado (agosto de 2026).';
+
+    await tratarCallback(ctx, d);
+
+    expect(ctx.answerCallbackQuery).toHaveBeenCalledOnce();
+    expect(ctx.answerCallbackQuery).toHaveBeenCalledWith('Gerando arquivos…');
+    expect(ctx.reply).toHaveBeenCalledWith(mensagem);
+    expect(ctx.replyWithDocument).not.toHaveBeenCalled();
+  });
+
+  it('primeira resposta ao callback rejeitando não impede a exportação', async () => {
+    const d = deps();
+    const ctx = ctxCallback('e:0');
+    ctx.answerCallbackQuery.mockRejectedValueOnce(
+      new Error('query is too old'),
+    );
+
+    await tratarCallback(ctx, d);
+
+    expect(d.exportar.executar).toHaveBeenCalledWith({ mesRelativo: 0 });
+    expect(documentosEnviados(ctx)).toHaveLength(2);
+    expect(ctx.reply).not.toHaveBeenCalled();
   });
 });

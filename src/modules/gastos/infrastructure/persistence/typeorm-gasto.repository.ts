@@ -41,4 +41,12 @@ export class TypeOrmGastoRepository implements GastoRepository {
     });
     return linhas.map(paraDominio);
   }
+
+  async listarUltimos(limite: number): Promise<Gasto[]> {
+    const linhas = await this.dataSource.getRepository(GastoOrmEntity).find({
+      order: { criadoEm: 'DESC', id: 'DESC' },
+      take: limite,
+    });
+    return linhas.map(paraDominio);
+  }
 }

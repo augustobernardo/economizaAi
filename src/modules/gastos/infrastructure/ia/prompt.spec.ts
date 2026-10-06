@@ -16,7 +16,8 @@ describe('instrucaoDeSistema', () => {
   });
 
   it('manda devolver lista vazia quando não há gasto', () => {
-    expect(instrucao).toContain('lista vazia');
+    expect(instrucao).toContain('"gastos" como lista vazia');
+    expect(instrucao).not.toContain('{"gastos": []}');
   });
 
   it('trata o conteúdo de <mensagem> como dado, nunca instrução', () => {
@@ -70,5 +71,29 @@ describe('instrucaoDeSistema para áudio', () => {
   it('texto continua sendo o padrão', () => {
     expect(instrucaoDeSistema(DATA)).toBe(instrucaoDeSistema(DATA, 'texto'));
     expect(instrucaoDeSistema(DATA)).toContain('<mensagem>');
+  });
+});
+
+describe('instrucaoDeSistema: intenção e período', () => {
+  const instrucao = instrucaoDeSistema(new Date('2026-10-03T15:00:00Z'));
+
+  it('descreve as quatro intenções', () => {
+    for (const i of ['registrar', 'exportar', 'resumir', 'listarUltimos'])
+      expect(instrucao).toContain(i);
+  });
+
+  it('exige gastos vazio fora de registrar e datas null em registrar/listarUltimos', () => {
+    expect(instrucao).toMatch(/gastos.*vazi/is);
+    expect(instrucao).toMatch(/inicio.*fim.*null/is);
+  });
+
+  it('traz as regras de período', () => {
+    expect(instrucao).toContain('dia 1 do mês atual');
+    expect(instrucao).toMatch(
+      /mês sem ano.*mais recente.*não esteja no futuro/is,
+    );
+    expect(instrucao).toMatch(/"dia X".*inicio = fim/is);
+    expect(instrucao).toContain('semana passada');
+    expect(instrucao).toMatch(/nunca.*futur/is);
   });
 });

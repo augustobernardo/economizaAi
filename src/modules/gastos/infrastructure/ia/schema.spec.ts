@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
-  respostaExtracaoAudioJsonSchema,
-  respostaExtracaoAudioSchema,
-  respostaExtracaoJsonSchema,
-  respostaExtracaoSchema,
+  respostaInterpretacaoAudioJsonSchema,
+  respostaInterpretacaoAudioSchema,
+  respostaInterpretacaoJsonSchema,
+  respostaInterpretacaoSchema,
 } from './schema.js';
 
 const gasto = {
@@ -12,141 +12,116 @@ const gasto = {
   descricao: 'Uber',
   dataGasto: '2026-10-02',
 };
+const base = {
+  intencao: 'registrar',
+  gastos: [] as unknown[],
+  inicio: null,
+  fim: null,
+};
 
-describe('respostaExtracaoSchema', () => {
-  it('aceita lista vazia e gasto válido', () => {
-    expect(respostaExtracaoSchema.safeParse({ gastos: [] }).success).toBe(true);
-    expect(respostaExtracaoSchema.safeParse({ gastos: [gasto] }).success).toBe(
-      true,
-    );
+describe('respostaInterpretacaoSchema', () => {
+  it.each(['registrar', 'exportar', 'resumir', 'listarUltimos'])(
+    'aceita a intenção %s',
+    (intencao) => {
+      expect(
+        respostaInterpretacaoSchema.safeParse({ ...base, intencao }).success,
+      ).toBe(true);
+    },
+  );
+
+  it('aceita gasto válido e período preenchido', () => {
+    expect(
+      respostaInterpretacaoSchema.safeParse({
+        ...base,
+        gastos: [gasto],
+        inicio: '2026-10-01',
+        fim: '2026-10-04',
+      }).success,
+    ).toBe(true);
   });
 
+  const { inicio: _i, ...semInicio } = base;
+  const { fim: _f, ...semFim } = base;
   it.each([
-    ['campo extra no item', { gastos: [{ ...gasto, x: 1 }] }],
-    ['campo extra na raiz', { gastos: [], instrucao: 'ok' }],
-    ['11 itens', { gastos: Array.from({ length: 11 }, () => gasto) }],
-    ['data em formato BR', { gastos: [{ ...gasto, dataGasto: '01/10/2026' }] }],
-    ['valor negativo', { gastos: [{ ...gasto, valorReais: -5 }] }],
-    ['valor zero', { gastos: [{ ...gasto, valorReais: 0 }] }],
+    ['intenção desconhecida', { ...base, intencao: 'apagar' }],
+    ['campo extra na raiz', { ...base, instrucao: 'ok' }],
+    ['campo extra no item', { ...base, gastos: [{ ...gasto, x: 1 }] }],
+    ['11 itens', { ...base, gastos: Array.from({ length: 11 }, () => gasto) }],
+    ['inicio em formato BR', { ...base, inicio: '01/10/2026' }],
+    ['fim em formato BR', { ...base, fim: '04/10/2026' }],
+    ['sem inicio', semInicio],
+    ['sem fim', semFim],
+    ['valor negativo', { ...base, gastos: [{ ...gasto, valorReais: -5 }] }],
+    ['valor zero', { ...base, gastos: [{ ...gasto, valorReais: 0 }] }],
     [
       'categoria desconhecida',
-      { gastos: [{ ...gasto, categoria: 'supermercado' }] },
+      { ...base, gastos: [{ ...gasto, categoria: 'supermercado' }] },
     ],
-    ['descrição em branco', { gastos: [{ ...gasto, descricao: '   ' }] }],
+    [
+      'descrição em branco',
+      { ...base, gastos: [{ ...gasto, descricao: '   ' }] },
+    ],
+    [
+      'dataGasto em formato BR',
+      { ...base, gastos: [{ ...gasto, dataGasto: '01/10/2026' }] },
+    ],
   ])('recusa %s', (_nome, entrada) => {
-    expect(respostaExtracaoSchema.safeParse(entrada).success).toBe(false);
+    expect(respostaInterpretacaoSchema.safeParse(entrada).success).toBe(false);
   });
 
-  it('gera JSON Schema de objeto com gastos obrigatório', () => {
-    expect(respostaExtracaoJsonSchema).toMatchObject({
+  it('JSON Schema não tem $schema e exige intencao, gastos, inicio e fim', () => {
+    expect(respostaInterpretacaoJsonSchema).not.toHaveProperty('$schema');
+    expect(respostaInterpretacaoJsonSchema).toMatchObject({
       type: 'object',
-      required: expect.arrayContaining(['gastos']),
+      required: expect.arrayContaining(['intencao', 'gastos', 'inicio', 'fim']),
     });
-  });
-
-  it('JSON Schema enviado ao Gemini (snapshot)', () => {
-    expect(respostaExtracaoJsonSchema).toMatchInlineSnapshot(`
-      {
-        "additionalProperties": false,
-        "properties": {
-          "gastos": {
-            "items": {
-              "additionalProperties": false,
-              "properties": {
-                "categoria": {
-                  "enum": [
-                    "alimentacao",
-                    "mercado",
-                    "transporte",
-                    "moradia",
-                    "saude",
-                    "lazer",
-                    "educacao",
-                    "assinaturas",
-                    "vestuario",
-                    "outros",
-                  ],
-                  "type": "string",
-                },
-                "dataGasto": {
-                  "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
-                  "type": "string",
-                },
-                "descricao": {
-                  "maxLength": 200,
-                  "minLength": 1,
-                  "type": "string",
-                },
-                "valorReais": {
-                  "minimum": 0.01,
-                  "type": "number",
-                },
-              },
-              "required": [
-                "valorReais",
-                "categoria",
-                "descricao",
-                "dataGasto",
-              ],
-              "type": "object",
-            },
-            "maxItems": 10,
-            "type": "array",
-          },
-        },
-        "required": [
-          "gastos",
-        ],
-        "type": "object",
-      }
-    `);
   });
 });
 
-describe('respostaExtracaoAudioSchema', () => {
-  it('aceita gastos com transcricao', () => {
+describe('respostaInterpretacaoAudioSchema', () => {
+  const audio = (transcricao: unknown) => ({ ...base, transcricao });
+
+  it('aceita transcricao vazia e comum', () => {
+    expect(respostaInterpretacaoAudioSchema.safeParse(audio('')).success).toBe(
+      true,
+    );
     expect(
-      respostaExtracaoAudioSchema.safeParse({
-        gastos: [gasto],
-        transcricao: 'gastei 50 no mercado',
-      }).success,
+      respostaInterpretacaoAudioSchema.safeParse(audio('gastei 50')).success,
     ).toBe(true);
   });
 
-  it('aceita transcricao vazia', () => {
+  it('aceita exatamente 2000 caracteres e recusa 2001', () => {
     expect(
-      respostaExtracaoAudioSchema.safeParse({ gastos: [], transcricao: '' })
+      respostaInterpretacaoAudioSchema.safeParse(audio('x'.repeat(2000)))
         .success,
     ).toBe(true);
-  });
-
-  it('rejeita sem transcricao', () => {
-    expect(respostaExtracaoAudioSchema.safeParse({ gastos: [] }).success).toBe(
-      false,
-    );
-  });
-
-  it('rejeita transcricao acima de 2000 caracteres', () => {
     expect(
-      respostaExtracaoAudioSchema.safeParse({
-        gastos: [],
-        transcricao: 'x'.repeat(2001),
-      }).success,
+      respostaInterpretacaoAudioSchema.safeParse(audio('x'.repeat(2001)))
+        .success,
     ).toBe(false);
   });
 
-  it('rejeita campo extra', () => {
+  it('aplica trim na transcricao', () => {
+    const { transcricao } = respostaInterpretacaoAudioSchema.parse(
+      audio('  oi  '),
+    );
+    expect(transcricao).toBe('oi');
+  });
+
+  it('rejeita sem transcricao e com campo extra', () => {
+    expect(respostaInterpretacaoAudioSchema.safeParse(base).success).toBe(
+      false,
+    );
     expect(
-      respostaExtracaoAudioSchema.safeParse({
-        gastos: [],
-        transcricao: '',
-        extra: 1,
-      }).success,
+      respostaInterpretacaoAudioSchema.safeParse({ ...audio(''), extra: 1 })
+        .success,
     ).toBe(false);
   });
 
   it('JSON Schema de áudio não tem $schema e exige transcricao', () => {
-    expect(respostaExtracaoAudioJsonSchema).not.toHaveProperty('$schema');
-    expect(respostaExtracaoAudioJsonSchema.required).toContain('transcricao');
+    expect(respostaInterpretacaoAudioJsonSchema).not.toHaveProperty('$schema');
+    expect(respostaInterpretacaoAudioJsonSchema.required).toContain(
+      'transcricao',
+    );
   });
 });

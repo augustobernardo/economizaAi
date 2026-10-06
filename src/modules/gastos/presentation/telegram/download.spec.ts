@@ -57,6 +57,12 @@ describe('baixarArquivo', () => {
     ).rejects.toBeInstanceOf(DownloadFalhouError);
   });
 
+  it('corpo com exatamente maxBytes é aceito', async () => {
+    const fetch = fetchQueResponde(new Uint8Array(OPCOES.maxBytes));
+    const buffer = await baixarArquivo(URL_SECRETA, { ...OPCOES, fetch });
+    expect(buffer.length).toBe(OPCOES.maxBytes);
+  });
+
   it('corpo acima do limite sem content-length → DownloadFalhouError', async () => {
     const fetch = fetchQueResponde(new Uint8Array(11));
     await expect(
