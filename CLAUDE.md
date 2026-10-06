@@ -47,7 +47,7 @@ importam tanto quanto a funcionalidade.
 
 - NestJS + TypeScript (strict), **pnpm**
 - TypeORM + Postgres **17**, **migrations** (nunca `synchronize`)
-- Telegraf em **long polling** (a VPS não tem domínio — webhook não é opção)
+- grammY em **long polling** (a VPS não tem domínio — webhook não é opção)
 - IA para **extrair**: **Gemini** (principal; entende áudio nativamente,
   structured output). Fallback para **Groq** (Whisper + LLM) adiado: por ora só Gemini.
   Hermes foi avaliado e descartado (sem áudio, free tier menor).
@@ -68,7 +68,7 @@ modules/gastos/
 ```
 
 **Regras invioláveis:**
-- `domain` não importa Nest, TypeORM, Telegraf nem SDKs de IA.
+- `domain` não importa Nest, TypeORM, grammY nem SDKs de IA.
 - Handlers e controllers não têm regra de negócio — só traduzem entrada/saída.
 - Trocar provedor de IA ou formato de exportação = nova classe, sem mexer em caso de uso.
 - **Não adicionar** CQRS, event bus, mediator ou abstrações sem uso concreto.
@@ -112,6 +112,10 @@ riscos e pontos fracos sejam apontados antes de validar uma ideia.
 | Banco | `economizaai` (+ `economizaai_test`) | `economiza-ai` |
 | Bot do Telegram | bot de **dev** (token próprio) | bot de **produção** |
 
+> Produção fica atrás de Cloudflare (DNS, proxy e Access) e do firewall da
+> <PROVEDOR_DA_VPS>; só SSH e as faixas da Cloudflare entram. Detalhes e riscos aceitos
+> em `SECURITY.md`, seção 7. Agentes não acessam a infraestrutura.
+
 - Nomes de serviço do docker-compose só resolvem entre containers, nunca do
   processo Node no host.
 - `POSTGRES_PASSWORD` só vale na criação do volume; mudar depois exige
@@ -140,8 +144,11 @@ recomeçou do zero em 2026-10-03.
 | 4 — Caso de uso RegistrarGastos | ✅ |
 | 5 — Adapter Gemini | ✅ (texto; test:ia manual ainda não rodado) |
 | 6 — Adapter Groq + Fallback | ⏸️ adiada (só Gemini por enquanto) |
-| 7 — Telegram texto | 🔧 próxima |
-| 8 — Telegram áudio | ⏳ |
+| 7 — Telegram texto | ✅ (grammY; Desfazer por registroId) |
+| 8 — Telegram áudio | 🔧 próxima |
 | 9 — (removida) | ❌ |
 | 10 — Exportação CSV/MD | ⏳ |
 | 11 — Docker + Easypanel | ⏳ (Postgres de produção já existe no Easypanel) |
+
+Infraestrutura de produção endurecida e com backup no R2 em 04/10/2026
+(ver `SECURITY.md` seção 7).

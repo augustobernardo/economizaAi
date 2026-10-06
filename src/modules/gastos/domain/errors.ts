@@ -17,3 +17,6 @@ export class DataFuturaError extends DomainError {}
 
 /** `dataGasto` é anterior à janela permitida (hoje − 1 ano) em `America/Sao_Paulo`. */
 export class DataForaDaJanelaError extends DomainError {}
+
+/** `registroId` vazio: todo gasto pertence a um registro (uma mensagem). */
+export class RegistroIdVazioError extends DomainError {}

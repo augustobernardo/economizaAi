@@ -12,9 +12,12 @@ describe('/dev/* em produção (e2e)', () => {
     process.env.NODE_ENV = 'production';
     // import dinâmico: o GastosModule decide os controllers na importação.
     const { AppModule } = await import('../src/app.module.js');
-    const modulo = await Test.createTestingModule({
-      imports: [AppModule],
-    }).compile();
+    const { TelegramBot } =
+      await import('../src/modules/gastos/presentation/telegram/telegram-bot.js');
+    const modulo = await Test.createTestingModule({ imports: [AppModule] })
+      .overrideProvider(TelegramBot)
+      .useValue({})
+      .compile();
     const app = modulo.createNestApplication();
     await app.init();
     try {

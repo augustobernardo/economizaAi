@@ -58,6 +58,7 @@ describe.skipIf(!apiKey || !modelo)('GeminiExtrator (API real)', () => {
           origem: 'texto',
           textoOriginal: 'ia-spec',
           agora: hoje,
+          registroId: crypto.randomUUID(),
         }),
       ).toThrow(ValorAcimaDoTetoError);
     }

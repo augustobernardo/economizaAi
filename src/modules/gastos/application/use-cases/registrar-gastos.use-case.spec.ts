@@ -170,4 +170,24 @@ describe('RegistrarGastosUseCase', () => {
       ProvedorIndisponivelError,
     );
   });
+
+  it('todos os gastos da mensagem compartilham o registroId devolvido', async () => {
+    const { useCase } = montar(
+      resultado([extraido(), extraido({ descricao: 'Mercado' })]),
+    );
+
+    const { registroId, gastos } = await useCase.executar(ENTRADA);
+
+    expect(registroId).toMatch(/^[0-9a-f-]{36}$/);
+    expect(gastos.map((g) => g.registroId)).toEqual([registroId, registroId]);
+  });
+
+  it('mensagens diferentes geram registroIds diferentes', async () => {
+    const { useCase } = montar(resultado([extraido()]));
+
+    const a = await useCase.executar(ENTRADA);
+    const b = await useCase.executar(ENTRADA);
+
+    expect(a.registroId).not.toBe(b.registroId);
+  });
 });

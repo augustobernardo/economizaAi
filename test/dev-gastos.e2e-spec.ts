@@ -39,7 +39,7 @@ describe('/dev/gastos (e2e)', () => {
     app = undefined;
   });
 
-  it('registra dois gastos e desfaz pelos ids', async () => {
+  it('registra dois gastos e desfaz pelo registroId', async () => {
     app = await subir(
       new FakeExtrator({
         textoOriginal: 'uber e mercado',
@@ -71,10 +71,14 @@ describe('/dev/gastos (e2e)', () => {
       valorCentavos: 3250,
       valor: 'R$ 32,50',
     });
+    expect(criado.body.registroId).toMatch(/^[0-9a-f-]{36}$/);
     expect(await contar(noApp)).toBe(2);
 
-    const ids = criado.body.gastos.map((g: { id: string }) => g.id);
-    await request(http).delete('/dev/gastos').send({ ids }).expect(204);
+    const desfeito = await request(http)
+      .delete('/dev/gastos')
+      .send({ registroId: criado.body.registroId })
+      .expect(200);
+    expect(desfeito.body).toEqual({ removidos: 2 });
     expect(await contar(noApp)).toBe(0);
   });
 
@@ -94,11 +98,19 @@ describe('/dev/gastos (e2e)', () => {
       .expect(400);
   });
 
-  it('devolve 400 para id que não é UUID no DELETE', async () => {
+  it('devolve 400 para registroId que não é UUID no DELETE', async () => {
     app = await subir(new FakeExtrator({ textoOriginal: '', gastos: [] }));
     await request(app.getHttpServer())
       .delete('/dev/gastos')
-      .send({ ids: ['nao-e-uuid'] })
+      .send({ registroId: 'nao-e-uuid' })
+      .expect(400);
+  });
+
+  it('devolve 400 para o contrato antigo { ids }', async () => {
+    app = await subir(new FakeExtrator({ textoOriginal: '', gastos: [] }));
+    await request(app.getHttpServer())
+      .delete('/dev/gastos')
+      .send({ ids: [crypto.randomUUID()] })
       .expect(400);
   });
 

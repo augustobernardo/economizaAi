@@ -10,18 +10,14 @@ import {
 import { z } from 'zod';
 import { DesfazerRegistroUseCase } from '../../application/use-cases/desfazer-registro.use-case.js';
 import { RegistrarGastosUseCase } from '../../application/use-cases/registrar-gastos.use-case.js';
+import { MAX_CARACTERES_TEXTO } from '../limites.js';
 import { ErrosHttpFilter } from './erros-http.filter.js';
 import { ZodValidationPipe } from './zod-validation.pipe.js';
-
-const MAX_CARACTERES_TEXTO = 500;
-const MAX_IDS = 50;
 
 export const textoSchema = z
   .object({ texto: z.string().trim().min(1).max(MAX_CARACTERES_TEXTO) })
   .strict();
-export const idsSchema = z
-  .object({ ids: z.array(z.uuid()).max(MAX_IDS) })
-  .strict();
+export const registroSchema = z.object({ registroId: z.uuid() }).strict();
 
 /** Endpoint de desenvolvimento; só registrado fora de produção (ver GastosModule). */
 @Controller('dev/gastos')
@@ -39,11 +35,14 @@ export class DevController {
     @Body(new ZodValidationPipe(textoSchema))
     corpo: z.infer<typeof textoSchema>,
   ) {
-    const { gastos, textoOriginal } = await this.registrar.executar({
-      tipo: 'texto',
-      texto: corpo.texto,
-    });
+    const { registroId, gastos, textoOriginal } = await this.registrar.executar(
+      {
+        tipo: 'texto',
+        texto: corpo.texto,
+      },
+    );
     return {
+      registroId,
       gastos: gastos.map((g) => ({
         id: g.id,
         valorCentavos: g.valor.centavos,
@@ -57,10 +56,11 @@ export class DevController {
   }
 
   @Delete()
-  @HttpCode(204)
+  @HttpCode(200)
   async desfazerRegistro(
-    @Body(new ZodValidationPipe(idsSchema)) corpo: z.infer<typeof idsSchema>,
-  ): Promise<void> {
-    await this.desfazer.executar(corpo.ids);
+    @Body(new ZodValidationPipe(registroSchema))
+    corpo: z.infer<typeof registroSchema>,
+  ): Promise<{ removidos: number }> {
+    return { removidos: await this.desfazer.executar(corpo.registroId) };
   }
 }

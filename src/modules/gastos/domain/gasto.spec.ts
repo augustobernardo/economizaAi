@@ -7,6 +7,7 @@ import {
   DataFuturaError,
   DataInvalidaError,
   DescricaoVaziaError,
+  RegistroIdVazioError,
   ValorAcimaDoTetoError,
 } from './errors.js';
 
@@ -21,6 +22,7 @@ describe('Gasto.criar', () => {
       origem: 'texto',
       textoOriginal: 'ontem gastei 32,50 de uber',
       agora,
+      registroId: crypto.randomUUID(),
     });
 
     expect(gasto.id).toBeTruthy();
@@ -131,9 +133,30 @@ describe('Gasto.restaurar', () => {
       origem: 'texto',
       textoOriginal: 'cinema',
       criadoEm: new Date('2000-01-01T12:00:00Z'),
+      registroId: 'reg-1',
     });
 
     expect(gasto.id).toBe('id-existente');
     expect(gasto.dataGasto).toBe('2000-01-01');
+  });
+});
+
+describe('registroId', () => {
+  it('guarda o registroId recebido', () => {
+    const registroId = crypto.randomUUID();
+    const gasto = umGasto().doRegistro(registroId).build();
+    expect(gasto.registroId).toBe(registroId);
+  });
+
+  it('registroId vazio → RegistroIdVazioError', () => {
+    expect(() => umGasto().doRegistro('  ').build()).toThrow(
+      RegistroIdVazioError,
+    );
+  });
+
+  it('restaurar preserva o registroId', () => {
+    const original = umGasto().build();
+    const restaurado = Gasto.restaurar({ ...original, valor: original.valor });
+    expect(restaurado.registroId).toBe(original.registroId);
   });
 });

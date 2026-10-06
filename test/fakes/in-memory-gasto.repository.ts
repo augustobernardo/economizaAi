@@ -8,8 +8,15 @@ export class InMemoryGastoRepository implements GastoRepository {
     this.gastos.push(...gastos);
   }
 
-  async removerPorIds(ids: string[]): Promise<void> {
-    this.gastos = this.gastos.filter((g) => !ids.includes(g.id));
+  async removerDoRegistro(
+    registroId: string,
+    criadoDesde: Date,
+  ): Promise<number> {
+    const antes = this.gastos.length;
+    this.gastos = this.gastos.filter(
+      (g) => !(g.registroId === registroId && g.criadoEm >= criadoDesde),
+    );
+    return antes - this.gastos.length;
   }
 
   async listarPorPeriodo(
