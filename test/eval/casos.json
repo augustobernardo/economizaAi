@@ -1,0 +1,686 @@
+[
+  {
+    "id": "girias-01",
+    "texto": "paguei cinquenta conto no barbeiro",
+    "holdout": false,
+    "esperado": {
+      "intencao": "registrar",
+      "gastos": [
+        {
+          "centavos": 5000,
+          "categoria": "outros",
+          "data": "2026-10-05",
+          "descricao": ["barbeiro", "cabelo"]
+        }
+      ]
+    }
+  },
+  {
+    "id": "girias-02",
+    "texto": "mil e duzentos de condomínio",
+    "holdout": true,
+    "esperado": {
+      "intencao": "registrar",
+      "gastos": [
+        {
+          "centavos": 120000,
+          "categoria": "moradia",
+          "data": "2026-10-05",
+          "descricao": ["condominio"]
+        }
+      ]
+    }
+  },
+  {
+    "id": "girias-03",
+    "texto": "gastei 30 pila no uber",
+    "holdout": false,
+    "esperado": {
+      "intencao": "registrar",
+      "gastos": [
+        {
+          "centavos": 3000,
+          "categoria": "transporte",
+          "data": "2026-10-05",
+          "descricao": ["uber"]
+        }
+      ]
+    }
+  },
+  {
+    "id": "girias-04",
+    "texto": "vinte e cinco reais e cinquenta centavos de lanche",
+    "holdout": false,
+    "esperado": {
+      "intencao": "registrar",
+      "gastos": [
+        {
+          "centavos": 2550,
+          "categoria": "alimentacao",
+          "data": "2026-10-05",
+          "descricao": ["lanche"]
+        }
+      ]
+    }
+  },
+  {
+    "id": "girias-05",
+    "texto": "dois mil na reforma do banheiro",
+    "holdout": false,
+    "esperado": {
+      "intencao": "registrar",
+      "gastos": [
+        {
+          "centavos": 200000,
+          "categoria": "moradia",
+          "data": "2026-10-05",
+          "descricao": ["reforma", "banheiro"]
+        }
+      ]
+    }
+  },
+  {
+    "id": "girias-06",
+    "texto": "quinze mangos no estacionamento",
+    "holdout": true,
+    "esperado": {
+      "intencao": "registrar",
+      "gastos": [
+        {
+          "centavos": 1500,
+          "categoria": "transporte",
+          "data": "2026-10-05",
+          "descricao": ["estacionamento"]
+        }
+      ]
+    }
+  },
+  {
+    "id": "formatos-01",
+    "texto": "almoço R$ 23,90",
+    "holdout": false,
+    "esperado": {
+      "intencao": "registrar",
+      "gastos": [
+        {
+          "centavos": 2390,
+          "categoria": "alimentacao",
+          "data": "2026-10-05",
+          "descricao": ["almoco"]
+        }
+      ]
+    }
+  },
+  {
+    "id": "formatos-02",
+    "texto": "uber 23.90",
+    "holdout": false,
+    "esperado": {
+      "intencao": "registrar",
+      "gastos": [
+        {
+          "centavos": 2390,
+          "categoria": "transporte",
+          "data": "2026-10-05",
+          "descricao": ["uber"]
+        }
+      ]
+    }
+  },
+  {
+    "id": "formatos-03",
+    "texto": "mercado 1.200",
+    "holdout": false,
+    "esperado": {
+      "intencao": "registrar",
+      "gastos": [
+        {
+          "centavos": 120000,
+          "categoria": "mercado",
+          "data": "2026-10-05",
+          "descricao": ["mercado"]
+        }
+      ]
+    }
+  },
+  {
+    "id": "formatos-04",
+    "texto": "1,2 mil de aluguel do mês",
+    "holdout": false,
+    "esperado": {
+      "intencao": "registrar",
+      "gastos": [
+        {
+          "centavos": 120000,
+          "categoria": "moradia",
+          "data": "2026-10-05",
+          "descricao": ["aluguel"]
+        }
+      ]
+    }
+  },
+  {
+    "id": "formatos-05",
+    "texto": "consulta médica R$1.234,56",
+    "holdout": true,
+    "esperado": {
+      "intencao": "registrar",
+      "gastos": [
+        {
+          "centavos": 123456,
+          "categoria": "saude",
+          "data": "2026-10-05",
+          "descricao": ["consulta"]
+        }
+      ]
+    }
+  },
+  {
+    "id": "formatos-06",
+    "texto": "café 12,5",
+    "holdout": false,
+    "esperado": {
+      "intencao": "registrar",
+      "gastos": [
+        {
+          "centavos": 1250,
+          "categoria": "alimentacao",
+          "data": "2026-10-05",
+          "descricao": ["cafe"]
+        }
+      ]
+    }
+  },
+  {
+    "id": "datas-01",
+    "texto": "ontem paguei 40 de gasolina",
+    "holdout": false,
+    "esperado": {
+      "intencao": "registrar",
+      "gastos": [
+        {
+          "centavos": 4000,
+          "categoria": "transporte",
+          "data": "2026-10-04",
+          "descricao": ["gasolina"]
+        }
+      ]
+    }
+  },
+  {
+    "id": "datas-02",
+    "texto": "anteontem tomei um café da manhã de 8,50",
+    "holdout": false,
+    "esperado": {
+      "intencao": "registrar",
+      "gastos": [
+        {
+          "centavos": 850,
+          "categoria": "alimentacao",
+          "data": "2026-10-03",
+          "descricao": ["cafe"]
+        }
+      ]
+    }
+  },
+  {
+    "id": "datas-03",
+    "texto": "sexta passada gastei 60 no cinema",
+    "holdout": true,
+    "esperado": {
+      "intencao": "registrar",
+      "gastos": [
+        {
+          "centavos": 6000,
+          "categoria": "lazer",
+          "data": "2026-10-02",
+          "descricao": ["cinema"]
+        }
+      ]
+    }
+  },
+  {
+    "id": "datas-04",
+    "texto": "dia 3 comprei remédio por 27",
+    "holdout": false,
+    "esperado": {
+      "intencao": "registrar",
+      "gastos": [
+        {
+          "centavos": 2700,
+          "categoria": "saude",
+          "data": "2026-10-03",
+          "descricao": ["remedio"]
+        }
+      ]
+    }
+  },
+  {
+    "id": "datas-05",
+    "texto": "hoje de manhã tomei um café de 7",
+    "holdout": false,
+    "esperado": {
+      "intencao": "registrar",
+      "gastos": [
+        {
+          "centavos": 700,
+          "categoria": "alimentacao",
+          "data": "2026-10-05",
+          "descricao": ["cafe"]
+        }
+      ]
+    }
+  },
+  {
+    "id": "datas-06",
+    "texto": "paguei 15 de lanche",
+    "holdout": false,
+    "esperado": {
+      "intencao": "registrar",
+      "gastos": [
+        {
+          "centavos": 1500,
+          "categoria": "alimentacao",
+          "data": "2026-10-05",
+          "descricao": ["lanche"]
+        }
+      ]
+    }
+  },
+  {
+    "id": "varios-01",
+    "texto": "gastei 20 no almoço e 15 no uber",
+    "holdout": false,
+    "esperado": {
+      "intencao": "registrar",
+      "gastos": [
+        {
+          "centavos": 2000,
+          "categoria": "alimentacao",
+          "data": "2026-10-05",
+          "descricao": ["almoco"]
+        },
+        {
+          "centavos": 1500,
+          "categoria": "transporte",
+          "data": "2026-10-05",
+          "descricao": ["uber"]
+        }
+      ]
+    }
+  },
+  {
+    "id": "varios-02",
+    "texto": "ontem paguei 120 de luz e 80 de água",
+    "holdout": false,
+    "esperado": {
+      "intencao": "registrar",
+      "gastos": [
+        {
+          "centavos": 12000,
+          "categoria": "moradia",
+          "data": "2026-10-04",
+          "descricao": ["luz"]
+        },
+        {
+          "centavos": 8000,
+          "categoria": "moradia",
+          "data": "2026-10-04",
+          "descricao": ["agua"]
+        }
+      ]
+    }
+  },
+  {
+    "id": "varios-03",
+    "texto": "hoje gastei 12 de café, 30 de gasolina e 45 de mercado",
+    "holdout": true,
+    "esperado": {
+      "intencao": "registrar",
+      "gastos": [
+        {
+          "centavos": 1200,
+          "categoria": "alimentacao",
+          "data": "2026-10-05",
+          "descricao": ["cafe"]
+        },
+        {
+          "centavos": 3000,
+          "categoria": "transporte",
+          "data": "2026-10-05",
+          "descricao": ["gasolina"]
+        },
+        {
+          "centavos": 4500,
+          "categoria": "mercado",
+          "data": "2026-10-05",
+          "descricao": ["mercado"]
+        }
+      ]
+    }
+  },
+  {
+    "id": "varios-04",
+    "texto": "ontem comprei uma camiseta de 70 e um sorvete de 10",
+    "holdout": false,
+    "esperado": {
+      "intencao": "registrar",
+      "gastos": [
+        {
+          "centavos": 7000,
+          "categoria": "vestuario",
+          "data": "2026-10-04",
+          "descricao": ["camiseta"]
+        },
+        {
+          "centavos": 1000,
+          "categoria": "alimentacao",
+          "data": "2026-10-04",
+          "descricao": ["sorvete"]
+        }
+      ]
+    }
+  },
+  {
+    "id": "varios-05",
+    "texto": "anteontem 25 de pizza e 18 de metrô",
+    "holdout": false,
+    "esperado": {
+      "intencao": "registrar",
+      "gastos": [
+        {
+          "centavos": 2500,
+          "categoria": "alimentacao",
+          "data": "2026-10-03",
+          "descricao": ["pizza"]
+        },
+        {
+          "centavos": 1800,
+          "categoria": "transporte",
+          "data": "2026-10-03",
+          "descricao": ["metro"]
+        }
+      ]
+    }
+  },
+  {
+    "id": "qtd-01",
+    "texto": "2 cafés de 8",
+    "holdout": false,
+    "esperado": {
+      "intencao": "registrar",
+      "gastos": [
+        {
+          "centavos": 1600,
+          "categoria": "alimentacao",
+          "data": "2026-10-05",
+          "descricao": ["cafe"]
+        }
+      ]
+    }
+  },
+  {
+    "id": "qtd-02",
+    "texto": "3 passagens de 4,40",
+    "holdout": false,
+    "esperado": {
+      "intencao": "registrar",
+      "gastos": [
+        {
+          "centavos": 1320,
+          "categoria": "transporte",
+          "data": "2026-10-05",
+          "descricao": ["passag", "onibus"]
+        }
+      ]
+    }
+  },
+  {
+    "id": "qtd-03",
+    "texto": "duas pizzas a 45 cada",
+    "holdout": true,
+    "esperado": {
+      "intencao": "registrar",
+      "gastos": [
+        {
+          "centavos": 9000,
+          "categoria": "alimentacao",
+          "data": "2026-10-05",
+          "descricao": ["pizza"]
+        }
+      ]
+    }
+  },
+  {
+    "id": "qtd-04",
+    "texto": "ontem 4 ingressos de 30 no cinema",
+    "holdout": false,
+    "esperado": {
+      "intencao": "registrar",
+      "gastos": [
+        {
+          "centavos": 12000,
+          "categoria": "lazer",
+          "data": "2026-10-04",
+          "descricao": ["ingresso", "cinema"]
+        }
+      ]
+    }
+  },
+  {
+    "id": "naogasto-01",
+    "texto": "recebi 100",
+    "holdout": false,
+    "esperado": {
+      "intencao": "registrar",
+      "gastos": []
+    }
+  },
+  {
+    "id": "naogasto-02",
+    "texto": "oi",
+    "holdout": false,
+    "esperado": {
+      "intencao": "registrar",
+      "gastos": []
+    }
+  },
+  {
+    "id": "naogasto-03",
+    "texto": "obrigado",
+    "holdout": false,
+    "esperado": {
+      "intencao": "registrar",
+      "gastos": []
+    }
+  },
+  {
+    "id": "naogasto-04",
+    "texto": "quanto gastei?",
+    "holdout": false,
+    "esperado": {
+      "intencao": "resumir",
+      "gastos": []
+    }
+  },
+  {
+    "id": "naogasto-05",
+    "texto": "quanto gastei em setembro?",
+    "holdout": true,
+    "esperado": {
+      "intencao": "resumir",
+      "gastos": []
+    }
+  },
+  {
+    "id": "naogasto-06",
+    "texto": "exporta agosto",
+    "holdout": false,
+    "esperado": {
+      "intencao": "exportar",
+      "gastos": []
+    }
+  },
+  {
+    "id": "naogasto-07",
+    "texto": "meus últimos gastos",
+    "holdout": false,
+    "esperado": {
+      "intencao": "listarUltimos",
+      "gastos": []
+    }
+  },
+  {
+    "id": "naogasto-08",
+    "texto": "vou gastar 50 amanhã",
+    "holdout": true,
+    "esperado": {
+      "intencao": "registrar",
+      "gastos": []
+    }
+  },
+  {
+    "id": "categoria-01",
+    "texto": "farmácia 45,90",
+    "holdout": false,
+    "esperado": {
+      "intencao": "registrar",
+      "gastos": [
+        {
+          "centavos": 4590,
+          "categoria": "saude",
+          "data": "2026-10-05",
+          "descricao": ["farmacia"]
+        }
+      ]
+    }
+  },
+  {
+    "id": "categoria-02",
+    "texto": "ifood 52",
+    "holdout": false,
+    "esperado": {
+      "intencao": "registrar",
+      "gastos": [
+        {
+          "centavos": 5200,
+          "categoria": "alimentacao",
+          "data": "2026-10-05",
+          "descricao": ["ifood"]
+        }
+      ]
+    }
+  },
+  {
+    "id": "categoria-03",
+    "texto": "abasteci no posto 150",
+    "holdout": false,
+    "esperado": {
+      "intencao": "registrar",
+      "gastos": [
+        {
+          "centavos": 15000,
+          "categoria": "transporte",
+          "data": "2026-10-05",
+          "descricao": ["posto", "gasolina", "combustivel", "abastec"]
+        }
+      ]
+    }
+  },
+  {
+    "id": "categoria-04",
+    "texto": "presente de aniversário da minha mãe 80",
+    "holdout": true,
+    "esperado": {
+      "intencao": "registrar",
+      "gastos": [
+        {
+          "centavos": 8000,
+          "categoria": "outros",
+          "data": "2026-10-05",
+          "descricao": ["presente"]
+        }
+      ]
+    }
+  },
+  {
+    "id": "categoria-05",
+    "texto": "netflix 55,90",
+    "holdout": false,
+    "esperado": {
+      "intencao": "registrar",
+      "gastos": [
+        {
+          "centavos": 5590,
+          "categoria": "assinaturas",
+          "data": "2026-10-05",
+          "descricao": ["netflix"]
+        }
+      ]
+    }
+  },
+  {
+    "id": "categoria-06",
+    "texto": "aluguel 1500",
+    "holdout": false,
+    "esperado": {
+      "intencao": "registrar",
+      "gastos": [
+        {
+          "centavos": 150000,
+          "categoria": "moradia",
+          "data": "2026-10-05",
+          "descricao": ["aluguel"]
+        }
+      ]
+    }
+  },
+  {
+    "id": "categoria-07",
+    "texto": "curso de inglês 200",
+    "holdout": true,
+    "esperado": {
+      "intencao": "registrar",
+      "gastos": [
+        {
+          "centavos": 20000,
+          "categoria": "educacao",
+          "data": "2026-10-05",
+          "descricao": ["curso"]
+        }
+      ]
+    }
+  },
+  {
+    "id": "categoria-08",
+    "texto": "tênis novo 320",
+    "holdout": false,
+    "esperado": {
+      "intencao": "registrar",
+      "gastos": [
+        {
+          "centavos": 32000,
+          "categoria": "vestuario",
+          "data": "2026-10-05",
+          "descricao": ["tenis"]
+        }
+      ]
+    }
+  },
+  {
+    "id": "categoria-09",
+    "texto": "padaria 14,50",
+    "holdout": true,
+    "esperado": {
+      "intencao": "registrar",
+      "gastos": [
+        {
+          "centavos": 1450,
+          "categoria": "alimentacao",
+          "data": "2026-10-05",
+          "descricao": ["padaria", "pao"]
+        }
+      ]
+    }
+  }
+]

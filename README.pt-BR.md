@@ -158,7 +158,10 @@ pnpm lint
 
 > [!NOTE]
 > `pnpm test:ia` chama o Gemini de verdade e gasta cota. Ele é manual e não
-> roda no CI.
+> roda no CI. O mesmo vale para o `pnpm eval:ia`, que mede o prompt de
+> extração em 44 casos fictícios de `test/eval/casos.json`
+> (`EVAL_PROMPT=v1..v5`, `EVAL_CONJUNTO=treino|holdout|todos`; use
+> `--reporter=default` para ver o relatório).
 
 ## Fluxo de desenvolvimento
 
