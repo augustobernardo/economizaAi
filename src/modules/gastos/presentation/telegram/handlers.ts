@@ -40,6 +40,7 @@ import {
   MENSAGEM_TEXTO_LONGO,
   mensagemDeErro,
 } from './formatador.js';
+import { semTags } from './html.js';
 
 export interface DepsTelegram {
   processar: Pick<ProcessarMensagemUseCase, 'executar'>;
@@ -86,9 +87,6 @@ export interface CtxCallback extends CtxResposta {
 
 const hojeDe = (deps: DepsTelegram): string =>
   hojeEmSaoPaulo(deps.relogio.agora());
-
-/** Popup (`answerCallbackQuery`) é texto puro: tira as tags da mensagem de erro. */
-const semTags = (texto: string): string => texto.replace(/<[^>]+>/g, '');
 
 function tecladoDesfazer(registroId: string): InlineKeyboard {
   return new InlineKeyboard().text(

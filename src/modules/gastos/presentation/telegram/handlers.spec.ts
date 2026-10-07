@@ -289,7 +289,7 @@ describe('tratarDesfazer', () => {
         desfazer: falhando(new NenhumGastoNoPeriodoError(AGOSTO)),
       }),
     );
-    expect(ctx.answerCallbackQuery.mock.calls[0]![0]).not.toMatch(/<[^>]+>/);
+    expect(ctx.answerCallbackQuery.mock.calls[0]![0]).not.toMatch(/[<>]/);
   });
 
   it('nada removido avisa e tira o botão', async () => {

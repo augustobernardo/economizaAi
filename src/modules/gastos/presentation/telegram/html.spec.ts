@@ -1,5 +1,16 @@
 import { describe, expect, it, vi } from 'vitest';
-import { comHtml, escaparHtml } from './html.js';
+import { comHtml, escaparHtml, semTags } from './html.js';
+
+describe('semTags', () => {
+  it('tira as tags e mantém o texto', () => {
+    expect(semTags('🗓️ Nada em <b>setembro/2026</b>.')).toBe(
+      '🗓️ Nada em setembro/2026.',
+    );
+  });
+  it('não deixa < nem > mesmo com tags aninhadas', () => {
+    expect(semTags('<<b>script>alert(1)<</b>/script>')).not.toMatch(/[<>]/);
+  });
+});
 
 describe('escaparHtml', () => {
   it('escapa &, < e > (o & primeiro)', () => {

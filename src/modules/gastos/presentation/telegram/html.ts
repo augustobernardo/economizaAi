@@ -8,6 +8,11 @@ export function escaparHtml(texto: string): string {
     .replaceAll('>', '&gt;');
 }
 
+/** Texto puro para popups (`answerCallbackQuery`): tira as tags e qualquer `<`/`>` que sobrar. */
+export function semTags(texto: string): string {
+  return texto.replace(/<[^>]*>/g, '').replace(/[<>]/g, '');
+}
+
 const METODOS_COM_TEXTO = new Set([
   'sendMessage',
   'editMessageText',
