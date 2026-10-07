@@ -110,15 +110,31 @@ No Telegram, com o bot de dev:
 
 ```
 você: ontem 18 num açaí e 120 no mercado
-bot:  ✅ 2 gastos registrados
-      • R$ 18,00 — açaí (alimentação) — 04/10
-      • R$ 120,00 — mercado (mercado) — 04/10
-      Total: R$ 138,00
+bot:  ✅ 2 gastos registrados!
+
+      🍔 Alimentação: R$ 18,00
+           Açaí · Ontem, 04/10
+      🛒 Mercado: R$ 120,00
+           Mercado · Ontem, 04/10
+
+      💵 Total: R$ 138,00
       [↩️ Desfazer]
+
+você: /resumo 2026-10
+bot:  📊 Resumo de outubro/2026
+      💵 Total: R$ 138,00 · 2 registros
+
+      🛒 Mercado: R$ 120,00 (87%)
+      🍔 Alimentação: R$ 18,00 (13%)
+
+      🏆 Maior gasto: R$ 120,00 · Mercado · 04/10
 ```
 
-Comandos: `/exportar`, `/resumo`, `/ultimos` e `/ajuda`. Pedidos em
-linguagem natural ("quanto gastei em setembro?") também funcionam.
+As respostas usam HTML do Telegram, com um emoji por categoria; o texto do
+usuário é sempre escapado. Comandos: `/resumo` (mês atual, ou
+`/resumo 2026-09`), `/exportar`, `/ultimos` e `/ajuda`, também no menu do
+Telegram. Pedidos em linguagem natural ("quanto gastei em setembro?") também
+funcionam.
 
 Fora de produção há rotas HTTP para validar sem o Telegram:
 
@@ -142,7 +158,10 @@ pnpm lint
 
 > [!NOTE]
 > `pnpm test:ia` chama o Gemini de verdade e gasta cota. Ele é manual e não
-> roda no CI.
+> roda no CI. O mesmo vale para o `pnpm eval:ia`, que mede o prompt de
+> extração em 44 casos fictícios de `test/eval/casos.json`
+> (`EVAL_PROMPT=v1..v5`, `EVAL_CONJUNTO=treino|holdout|todos`; use
+> `--reporter=default` para ver o relatório).
 
 ## Fluxo de desenvolvimento
 
@@ -151,6 +170,18 @@ CI roda, e só um PR `develop → main` com o CI verde chega à produção. Os
 commits seguem [Conventional Commits](https://www.conventionalcommits.org/),
 verificados pelo commitlint. As regras completas estão no
 [CLAUDE.md](./CLAUDE.md#git--branches-commits-prs-e-merges).
+
+As versões seguem o [SemVer](https://semver.org/lang/pt-BR/) e toda mudança
+fica no [CHANGELOG.md](./CHANGELOG.md) (em inglês). O PR de release
+`develop → main` sobe a `version` do `package.json` e move `[Unreleased]`
+para `[x.y.z] - AAAA-MM-DD` (o CI barra o PR sem isso). O merge na `main` cria
+a tag `vX.Y.Z`, uma GitHub Release com essas notas e a imagem
+`ghcr.io/augustobernardo/economizaai:vX.Y.Z`.
+
+As releases são imutáveis: release com problema se corrige com uma nova
+versão de patch, nunca editando ou recriando a tag.
+
+Releases: [github.com/augustobernardo/economizaAi/releases](https://github.com/augustobernardo/economizaAi/releases)
 
 ## Deploy
 

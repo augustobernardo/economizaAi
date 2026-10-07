@@ -1,6 +1,6 @@
 {
   "name": "economizaai",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "Bot de Telegram pessoal para registro de gastos com IA",
   "author": "",
   "private": true,
@@ -19,6 +19,7 @@
     "start:debug": "nest start --debug --watch --env-file .env",
     "start:prod": "node dist/main",
     "lint": "oxlint --type-aware src/ test/",
+    "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:cov": "vitest run --coverage",
@@ -26,7 +27,8 @@
     "test:e2e": "vitest run --config ./vitest.config.e2e.ts",
     "test:integration": "vitest run --config ./vitest.config.integration.ts",
     "test:ia": "node --env-file-if-exists=.env node_modules/vitest/vitest.mjs run --config ./vitest.config.ia.ts",
-    "migration:run": "pnpm build && node --env-file-if-exists=.env node_modules/typeorm/cli.js migration:run -d dist/database/data-source.js",
+    "eval:ia": "node --env-file-if-exists=.env node_modules/vitest/vitest.mjs run --config ./vitest.config.eval.ts",
+    "migration:run": "pnpm build && node --env-file-if-exists=.env dist/database/migrar.js",
     "migration:revert": "pnpm build && node --env-file-if-exists=.env node_modules/typeorm/cli.js migration:revert -d dist/database/data-source.js"
   },
   "dependencies": {

@@ -43,6 +43,16 @@ describe('resolverPeriodo', () => {
     expect(p.fim).toBe('2026-10-04');
   });
 
+  it('mes AAAA-MM → mês inteiro', () => {
+    const p = resolverPeriodo({ mes: '2026-09' }, AGORA);
+
+    expect([p.inicio, p.fim, p.tipo]).toEqual([
+      '2026-09-01',
+      '2026-09-30',
+      'mes',
+    ]);
+  });
+
   it('início no futuro → PeriodoFuturoError', () => {
     expect(() =>
       resolverPeriodo({ inicio: '2026-10-05', fim: '2026-10-06' }, AGORA),

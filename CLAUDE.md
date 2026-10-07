@@ -27,6 +27,8 @@ Fluxo por etapa: Passo 0 → implementação → revisão → gate de segurança
 - Proibido ler `.env` (regras `deny` + hook `protege-segredos.mjs`).
 - Proibido SQL concatenado; saída de LLM sempre validada por zod.
 - Owner guard é o primeiro middleware do Telegram.
+- Respostas do bot são HTML: texto externo sempre escapado (`escaparHtml` ou
+  tag `html`, tipo `Html`); nunca remover tags com regex para reusar em HTML.
 - Nunca logar tokens, chaves, `DATABASE_URL` ou a URL de `getFileLink`.
 - `/dev/*` só fora de produção, com teste.
 - Dependência nova, skill nova ou mudança em `.claude/**` exige aprovação do dono.
@@ -182,6 +184,15 @@ Regra do dono prevalece sobre a referência externa.
 
 - PR `develop → main` com título `chore(release): <summary>` e a lista dos
   commits na descrição.
+- **Versão (SemVer 2.0.0):** todo PR para a `main` sobe a `version` do
+  `package.json` (MAJOR quebra, MINOR feature, PATCH correção) e move
+  `## [Unreleased]` do `CHANGELOG.md` para `## [x.y.z] - AAAA-MM-DD`; o CI
+  barra o PR sem isso. O merge na `main` cria a tag `vX.Y.Z`, a GitHub
+  Release e a imagem `:vX.Y.Z`. Mudanças que importam ao usuário entram em
+  `[Unreleased]` no mesmo PR que as introduz. Releases são **imutáveis**:
+  release com problema → nova versão de patch, nunca editar/recriar a tag.
+  PR de segurança do Dependabot para a `main` também precisa, no próprio
+  branch do bot, de um commit com bump de patch e a seção no CHANGELOG.
 - Dependabot abre PRs na `develop` (alertas de **segurança** sempre vão para
   a `main`, branch padrão).
 
@@ -269,6 +280,7 @@ recomeçou do zero em 2026-10-03.
 | 9 — (removida) | ❌ |
 | 10 — Exportação, resumo e últimos | ✅ (texto, voz e comandos) |
 | 11 — Docker + Easypanel | 🔧 pipeline pronto (Dockerfile, CI com trivy, deploy após CI verde); falta a configuração do dono e o 1º deploy |
+| 12 — Mensagens HTML, /resumo por mês, avaliação da IA | ✅ validada no bot de dev em 06/10 (HTML, Desfazer, voz, /resumo); prompt v5 em uso; falta commit |
 
 Infraestrutura de produção endurecida e com backup em 04/10/2026
 (ver `SECURITY.md` local, seção 7). `SECURITY.md`, `ROADMAP.md`,

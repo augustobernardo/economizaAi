@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
   respostaInterpretacaoAudioJsonSchema,
+  respostaInterpretacaoAudioJsonSchemaV5,
+  respostaInterpretacaoJsonSchemaV5,
+  respostaInterpretacaoSchemaComDescricoes,
   respostaInterpretacaoAudioSchema,
   respostaInterpretacaoJsonSchema,
   respostaInterpretacaoSchema,
@@ -162,5 +165,53 @@ describe('JSON Schema enviado ao Gemini', () => {
     expect(JSON.stringify(respostaInterpretacaoAudioJsonSchema)).not.toContain(
       '\\\\p{',
     );
+  });
+});
+
+describe('schema v5 (com descrições)', () => {
+  const props = respostaInterpretacaoJsonSchemaV5.properties as Record<
+    string,
+    any
+  >;
+  const itemProps = props.gastos.items.properties as Record<string, any>;
+
+  it.each(['valorReais', 'categoria', 'descricao', 'dataGasto'])(
+    'descreve o campo do gasto %s',
+    (campo) => expect(itemProps[campo].description).toEqual(expect.any(String)),
+  );
+  it.each(['intencao', 'gastos', 'inicio', 'fim'])('descreve %s', (campo) =>
+    expect(props[campo].description).toEqual(expect.any(String)),
+  );
+  it('áudio descreve transcricao e não tem $schema', () => {
+    expect(respostaInterpretacaoAudioJsonSchemaV5).not.toHaveProperty(
+      '$schema',
+    );
+    expect(
+      (respostaInterpretacaoAudioJsonSchemaV5.properties as any).transcricao
+        .description,
+    ).toEqual(expect.any(String));
+  });
+  it('o schema sem descrição não muda', () => {
+    expect(JSON.stringify(respostaInterpretacaoJsonSchema)).not.toContain(
+      'description',
+    );
+  });
+  it('a validação continua estrita', () => {
+    expect(
+      respostaInterpretacaoSchemaComDescricoes.safeParse({ ...base, extra: 1 })
+        .success,
+    ).toBe(false);
+    expect(
+      respostaInterpretacaoSchemaComDescricoes.safeParse({
+        ...base,
+        gastos: [{ ...gasto, x: 1 }],
+      }).success,
+    ).toBe(false);
+    expect(
+      respostaInterpretacaoSchemaComDescricoes.safeParse({
+        ...base,
+        gastos: [gasto],
+      }).success,
+    ).toBe(true);
   });
 });

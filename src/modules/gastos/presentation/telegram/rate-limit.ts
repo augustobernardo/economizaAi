@@ -1,12 +1,12 @@
+import { MENSAGEM_RATE_LIMIT, POPUP_RATE_LIMIT } from './formatador.js';
+import type { Html } from './html.js';
+
 export interface CtxRateLimit {
   from?: { id: number };
   callbackQuery?: unknown;
-  reply(texto: string): Promise<unknown>;
+  reply(texto: Html): Promise<unknown>;
   answerCallbackQuery?(texto?: string): Promise<unknown>;
 }
-
-export const MENSAGEM_RATE_LIMIT =
-  'Muitas mensagens seguidas, espere um minuto.';
 
 /** Janela fixa por `from.id` (SECURITY.md §3.2: proteção contra loop e cota). */
 export function criarRateLimit(opcoes: {
@@ -33,7 +33,7 @@ export function criarRateLimit(opcoes: {
     janela.contagem++;
     if (janela.contagem <= opcoes.limite) return next();
     // Sem isto o spinner do botão fica girando em cada clique barrado.
-    if (ctx.callbackQuery) await ctx.answerCallbackQuery?.(MENSAGEM_RATE_LIMIT);
+    if (ctx.callbackQuery) await ctx.answerCallbackQuery?.(POPUP_RATE_LIMIT);
     if (janela.contagem === opcoes.limite + 1)
       await ctx.reply(MENSAGEM_RATE_LIMIT);
   };

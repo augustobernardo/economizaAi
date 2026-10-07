@@ -47,9 +47,9 @@ describe('MarkdownExportador', () => {
     expect(texto([gasto(10, 'mercado', 'Pão')])).toContain('(1 gasto)');
   });
 
-  it('percentual com casa decimal', () => {
+  it('percentual inteiro', () => {
     const t = texto([gasto(20, 'alimentacao', 'a'), gasto(10, 'mercado', 'b')]);
-    expect(t).toContain('| alimentação | R$ 20,00 | 66,7% |');
+    expect(t).toContain('| alimentação | R$ 20,00 | 67% |');
   });
 
   it('escapa pipe e quebra de linha na descrição', () => {
