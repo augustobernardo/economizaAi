@@ -182,6 +182,15 @@ Regra do dono prevalece sobre a referência externa.
 
 - PR `develop → main` com título `chore(release): <summary>` e a lista dos
   commits na descrição.
+- **Versão (SemVer 2.0.0):** todo PR para a `main` sobe a `version` do
+  `package.json` (MAJOR quebra, MINOR feature, PATCH correção) e move
+  `## [Unreleased]` do `CHANGELOG.md` para `## [x.y.z] - AAAA-MM-DD`; o CI
+  barra o PR sem isso. O merge na `main` cria a tag `vX.Y.Z`, a GitHub
+  Release e a imagem `:vX.Y.Z`. Mudanças que importam ao usuário entram em
+  `[Unreleased]` no mesmo PR que as introduz. Releases são **imutáveis**:
+  release com problema → nova versão de patch, nunca editar/recriar a tag.
+  PR de segurança do Dependabot para a `main` também precisa, no próprio
+  branch do bot, de um commit com bump de patch e a seção no CHANGELOG.
 - Dependabot abre PRs na `develop` (alertas de **segurança** sempre vão para
   a `main`, branch padrão).
 

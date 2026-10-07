@@ -171,6 +171,18 @@ commits seguem [Conventional Commits](https://www.conventionalcommits.org/),
 verificados pelo commitlint. As regras completas estão no
 [CLAUDE.md](./CLAUDE.md#git--branches-commits-prs-e-merges).
 
+As versões seguem o [SemVer](https://semver.org/lang/pt-BR/) e toda mudança
+fica no [CHANGELOG.md](./CHANGELOG.md) (em inglês). O PR de release
+`develop → main` sobe a `version` do `package.json` e move `[Unreleased]`
+para `[x.y.z] - AAAA-MM-DD` (o CI barra o PR sem isso). O merge na `main` cria
+a tag `vX.Y.Z`, uma GitHub Release com essas notas e a imagem
+`ghcr.io/augustobernardo/economizaai:vX.Y.Z`.
+
+As releases são imutáveis: release com problema se corrige com uma nova
+versão de patch, nunca editando ou recriando a tag.
+
+Releases: [github.com/augustobernardo/economizaAi/releases](https://github.com/augustobernardo/economizaAi/releases)
+
 ## Deploy
 
 A produção roda como container Docker no Easypanel. O Auto Deploy do

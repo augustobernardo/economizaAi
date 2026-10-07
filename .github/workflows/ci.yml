@@ -38,6 +38,33 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Confere versão e CHANGELOG do PR de release
+        if: github.event_name == 'pull_request' && github.base_ref == 'main'
+        run: |
+          ver=$(node -p "require('./package.json').version")
+          if [[ ! "${ver}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::package.json version is not MAJOR.MINOR.PATCH"; exit 1
+          fi
+          # --exit-code: 0 = tag found, 2 = not found, anything else = network/auth error (fail closed).
+          rc=0
+          git ls-remote --exit-code --tags "https://github.com/${GITHUB_REPOSITORY}" "refs/tags/v${ver}" >/dev/null || rc=$?
+          case "${rc}" in
+            0) echo "::error::tag v${ver} already exists: bump version in package.json"; exit 1 ;;
+            2) ;;
+            *) echo "::error::could not query remote tags (git exit ${rc})"; exit 1 ;;
+          esac
+          if ! awk -v h="## [${ver}]" 'index($0, h) == 1 { found = 1 } END { exit !found }' CHANGELOG.md; then
+            echo "::error::CHANGELOG.md has no '## [${ver}]' section"; exit 1
+          fi
+          if ! awk '
+            index($0, "## [Unreleased]") == 1 { on = 1; next }
+            on && (/^## \[/ || /^\[[^]]+\]: /) { exit }
+            on && NF && !/^### / { left = 1 }
+            END { exit left }
+          ' CHANGELOG.md; then
+            echo "::error::CHANGELOG.md [Unreleased] is not empty: move it to '## [${ver}]'"; exit 1
+          fi
+
       - name: Instala pnpm
         uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
 
@@ -107,6 +134,9 @@ jobs:
       packages: write
       id-token: write
       attestations: write
+    outputs:
+      version: ${{ steps.push.outputs.version }}
+      digest: ${{ steps.push.outputs.digest }}
     env:
       IMAGE: ghcr.io/augustobernardo/economizaai
     steps:
@@ -122,12 +152,15 @@ jobs:
             --label "org.opencontainers.image.revision=${GITHUB_SHA}" \
             -t "${IMAGE}:${GITHUB_SHA}" .
 
-      - name: Escaneia a imagem (trivy, CRITICAL com correção)
+      - name: Escaneia a imagem (trivy, CRITICAL com correção e segredos)
         run: |
           img=$(sed -n 's/^FROM //p' .github/tools/trivy/Dockerfile)
           docker save "${IMAGE}:${GITHUB_SHA}" -o "$RUNNER_TEMP/image.tar"
           docker run --rm -v "$RUNNER_TEMP/image.tar:/in/image.tar:ro" "$img" \
             image --input /in/image.tar --severity CRITICAL --ignore-unfixed --exit-code 1 --no-progress
+          # The image is public: any embedded secret fails the release, whatever its severity.
+          docker run --rm -v "$RUNNER_TEMP/image.tar:/in/image.tar:ro" "$img" \
+            image --input /in/image.tar --scanners secret --exit-code 1 --no-progress
           rm -f "$RUNNER_TEMP/image.tar"
 
       - name: Login no GHCR
@@ -138,9 +171,23 @@ jobs:
       - name: Publica a imagem
         id: push
         run: |
+          ver=$(node -p "require('./package.json').version")
+          if [[ ! "${ver}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::package.json version is not MAJOR.MINOR.PATCH"; exit 1
+          fi
           docker tag "${IMAGE}:${GITHUB_SHA}" "${IMAGE}:main"
           docker push "${IMAGE}:${GITHUB_SHA}"
           docker push "${IMAGE}:main"
+          tags="\`${GITHUB_SHA}\`, \`main\`"
+          # :vX.Y.Z is written once; a merge without bump leaves the published one alone.
+          if docker manifest inspect "${IMAGE}:v${ver}" >/dev/null 2>&1; then
+            echo "::notice::image :v${ver} already published; not updated"
+          else
+            docker tag "${IMAGE}:${GITHUB_SHA}" "${IMAGE}:v${ver}"
+            docker push "${IMAGE}:v${ver}"
+            tags="${tags}, \`v${ver}\`"
+          fi
+          echo "version=${ver}" >> "$GITHUB_OUTPUT"
           ref=$(docker inspect --format '{{index .RepoDigests 0}}' "${IMAGE}:${GITHUB_SHA}")
           digest="${ref#*@}"
           case "${digest}" in
@@ -148,7 +195,7 @@ jobs:
             *) echo "::error::could not resolve pushed digest"; exit 1 ;;
           esac
           echo "digest=${digest}" >> "$GITHUB_OUTPUT"
-          echo "Published \`${IMAGE}@${digest}\` (tags \`${GITHUB_SHA}\`, \`main\`)" >> "$GITHUB_STEP_SUMMARY"
+          echo "Published \`${IMAGE}@${digest}\` (tags ${tags})" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Atesta a proveniência
         uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
@@ -160,6 +207,69 @@ jobs:
       - name: Logout do GHCR
         if: always()
         run: docker logout ghcr.io
+
+  tag:
+    name: tag
+    needs: [release]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    concurrency:
+      group: tag-main
+      cancel-in-progress: false
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Cria a tag e a GitHub Release da versão
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          VERSION: ${{ needs.release.outputs.version }}
+          DIGEST: ${{ needs.release.outputs.digest }}
+          IMAGE: ghcr.io/augustobernardo/economizaai
+        run: |
+          if [[ ! "${VERSION}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::version from release job is not MAJOR.MINOR.PATCH"; exit 1
+          fi
+          tag="v${VERSION}"
+          # --exit-code: 0 = tag found, 2 = not found, anything else = network/auth error.
+          rc=0
+          git ls-remote --exit-code --tags "https://github.com/${GITHUB_REPOSITORY}" "refs/tags/${tag}" >/dev/null || rc=$?
+          case "${rc}" in
+            0) echo "::notice::${tag} already exists; no release created (version not bumped)"; exit 0 ;;
+            2) ;;
+            *) echo "::error::could not query remote tags (git exit ${rc})"; exit 1 ;;
+          esac
+          # Releases are immutable: validate everything before publishing, never delete or recreate.
+          case "${DIGEST}" in
+            sha256:*) ;;
+            *) echo "::error::missing image digest from release job"; exit 1 ;;
+          esac
+          notes="$RUNNER_TEMP/notes.md"
+          awk -v h="## [${VERSION}]" '
+            index($0, h) == 1 { on = 1; next }
+            on && (/^## \[/ || /^\[[^]]+\]: /) { exit }
+            on { print }
+          ' CHANGELOG.md > "${notes}"
+          if ! grep -q '[^[:space:]]' "${notes}"; then
+            echo "::error::CHANGELOG.md has no notes for ${VERSION}"; exit 1
+          fi
+          {
+            echo
+            echo "### Container image"
+            echo
+            echo "- \`${IMAGE}:${tag}\`"
+            echo "- \`${IMAGE}@${DIGEST}\`"
+            echo
+            echo "Build provenance is attested: \`gh attestation verify oci://${IMAGE}@${DIGEST} --owner augustobernardo\`"
+          } >> "${notes}"
+          gh release create "${tag}" --target "${GITHUB_SHA}" --title "${tag}" --notes-file "${notes}" --latest
+          echo "Released \`${tag}\` at \`${GITHUB_SHA}\`" >> "$GITHUB_STEP_SUMMARY"
 
   deploy:
     name: deploy

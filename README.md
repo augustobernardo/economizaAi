@@ -177,6 +177,18 @@ reaches production. Commits follow
 commitlint. The full rules live in
 [CLAUDE.md](./CLAUDE.md#git--branches-commits-prs-e-merges) (Portuguese).
 
+Versions follow [SemVer](https://semver.org/) and every change is logged in
+[CHANGELOG.md](./CHANGELOG.md). The `develop → main` release pull request
+bumps `version` in `package.json` and moves `[Unreleased]` to
+`[x.y.z] - YYYY-MM-DD` (CI blocks it otherwise). The merge on `main` creates
+the `vX.Y.Z` tag, a GitHub Release with those notes and the image
+`ghcr.io/augustobernardo/economizaai:vX.Y.Z`.
+
+Releases are immutable: a broken release is fixed by a new patch version,
+never by editing or recreating its tag.
+
+Releases: [github.com/augustobernardo/economizaAi/releases](https://github.com/augustobernardo/economizaAi/releases)
+
 ## Deploy
 
 Production runs as a Docker container on Easypanel. Easypanel Auto Deploy
