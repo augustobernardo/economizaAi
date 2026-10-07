@@ -148,7 +148,10 @@ pnpm lint
 
 > [!NOTE]
 > `pnpm test:ia` calls the real Gemini API and uses quota. It is run by hand
-> and never in CI.
+> and never in CI. The same goes for `pnpm eval:ia`, which scores the
+> extraction prompt against 44 fictional cases in `test/eval/casos.json`
+> (`EVAL_PROMPT=v1..v5`, `EVAL_CONJUNTO=treino|holdout|todos`; add
+> `--reporter=default` to see the report).
 
 ## Development workflow
 

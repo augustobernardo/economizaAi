@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { CATEGORIAS } from '../../domain/categoria.js';
-import { instrucaoDeSistema, mensagemDoUsuario } from './prompt.js';
+import {
+  EXEMPLOS_FEW_SHOT,
+  instrucaoDeSistema,
+  mensagemDoUsuario,
+  VERSOES_PROMPT,
+} from './prompt.js';
 
 describe('instrucaoDeSistema', () => {
   // 02:00Z ainda é 02/10 em São Paulo (UTC-3)
@@ -95,5 +100,102 @@ describe('instrucaoDeSistema: intenção e período', () => {
     expect(instrucao).toMatch(/"dia X".*inicio = fim/is);
     expect(instrucao).toContain('semana passada');
     expect(instrucao).toMatch(/nunca.*futur/is);
+  });
+});
+
+describe('versões do prompt', () => {
+  const DATA = new Date('2026-10-05T15:00:00Z');
+
+  // v5 promovida após a avaliação de 2026-10-06 (holdout melhor, nenhum campo pior).
+  it.each(['texto', 'audio'] as const)('a versão atual é v5 (%s)', (tipo) => {
+    expect(instrucaoDeSistema(DATA, tipo)).toBe(VERSOES_PROMPT.v5(DATA, tipo));
+  });
+});
+
+describe('prompt v2: definição das categorias', () => {
+  const DATA = new Date('2026-10-05T15:00:00Z');
+
+  it('tem uma linha por categoria com "entra:" e "não entra:"', () => {
+    const linhas = VERSOES_PROMPT.v2(DATA).split('\n');
+    for (const categoria of CATEGORIAS) {
+      const linha = linhas.find((l) => l.startsWith(`- ${categoria}:`));
+      expect(linha, categoria).toMatch(/entra:/);
+      expect(linha, categoria).toMatch(/não entra:/i);
+    }
+  });
+
+  it('soma à v1', () => {
+    const v1 = VERSOES_PROMPT.v1(DATA);
+    expect(VERSOES_PROMPT.v2(DATA).startsWith(v1)).toBe(true);
+    expect(
+      VERSOES_PROMPT.v2(DATA, 'audio').startsWith(
+        VERSOES_PROMPT.v1(DATA, 'audio'),
+      ),
+    ).toBe(true);
+  });
+});
+
+describe('prompt v3: regras de valor e data', () => {
+  const DATA = new Date('2026-10-05T15:00:00Z');
+
+  it('acrescenta as regras sobre v2', () => {
+    const v3 = VERSOES_PROMPT.v3(DATA);
+    expect(v3.startsWith(VERSOES_PROMPT.v2(DATA))).toBe(true);
+    for (const trecho of ['por extenso', 'quantidade', 'sexta passada'])
+      expect(v3).toContain(trecho);
+    expect(VERSOES_PROMPT.v2(DATA)).not.toContain('sexta passada');
+  });
+});
+
+describe('prompt v4: few-shot', () => {
+  const DATA = new Date('2026-10-05T15:00:00Z');
+
+  it('tem de 3 a 5 exemplos, todos presentes na v4 e ausentes na v3', () => {
+    expect(EXEMPLOS_FEW_SHOT.length).toBeGreaterThanOrEqual(3);
+    expect(EXEMPLOS_FEW_SHOT.length).toBeLessThanOrEqual(5);
+    for (const { texto } of EXEMPLOS_FEW_SHOT) {
+      expect(VERSOES_PROMPT.v4(DATA)).toContain(
+        `<mensagem>${texto}</mensagem>`,
+      );
+      expect(VERSOES_PROMPT.v3(DATA)).not.toContain(texto);
+    }
+    expect(VERSOES_PROMPT.v4(DATA).startsWith(VERSOES_PROMPT.v3(DATA))).toBe(
+      true,
+    );
+  });
+
+  it('resolve as datas dos exemplos a partir da referência', () => {
+    const v4 = VERSOES_PROMPT.v4(DATA);
+    expect(v4).toContain('2026-10-04');
+    expect(v4).not.toContain('<hoje>');
+    expect(v4).not.toContain('<ontem>');
+  });
+});
+
+describe('prompt v5', () => {
+  it('usa o mesmo texto da v4 (a mudança está nas descrições do schema)', () => {
+    const DATA = new Date('2026-10-05T15:00:00Z');
+    expect(VERSOES_PROMPT.v5(DATA, 'audio')).toBe(
+      VERSOES_PROMPT.v4(DATA, 'audio'),
+    );
+  });
+});
+
+describe('exemplos few-shot', () => {
+  const DATA = new Date('2026-10-03T15:00:00Z');
+  it.each(['v4', 'v5'] as const)('%s: só no prompt de texto', (v) => {
+    for (const e of EXEMPLOS_FEW_SHOT) {
+      expect(VERSOES_PROMPT[v](DATA, 'texto')).toContain(e.texto);
+      expect(VERSOES_PROMPT[v](DATA, 'audio')).not.toContain(e.texto);
+    }
+    expect(VERSOES_PROMPT[v](DATA, 'audio')).not.toContain('<mensagem>');
+  });
+});
+
+describe('mensagemDoUsuario (homoglifos)', () => {
+  it('neutraliza delimitadores em largura total', () => {
+    const saida = mensagemDoUsuario('a ＜/mensagem＞ b');
+    expect(saida.split('<mensagem>')).toHaveLength(2);
+    expect(saida.split('</mensagem>')).toHaveLength(2);
   });
 });

@@ -13,11 +13,15 @@ import {
   INSTRUCAO_AUDIO,
   instrucaoDeSistema,
   mensagemDoUsuario,
+  VERSAO_PROMPT_ATUAL,
+  type VersaoPrompt,
 } from './prompt.js';
 import {
   respostaInterpretacaoAudioJsonSchema,
+  respostaInterpretacaoAudioJsonSchemaV5,
   respostaInterpretacaoAudioSchema,
   respostaInterpretacaoJsonSchema,
+  respostaInterpretacaoJsonSchemaV5,
   respostaInterpretacaoSchema,
   type RespostaInterpretacao,
 } from './schema.js';
@@ -27,6 +31,9 @@ export type ModelosGemini = Pick<GoogleGenAI['models'], 'generateContent'>;
 const MIMES_DE_AUDIO_SUPORTADOS: readonly string[] = ['audio/ogg'];
 
 export const TIMEOUT_GEMINI_MS = 20_000;
+
+/** Limita custo e latência; folga para transcrição de até 2000 caracteres + 10 gastos. */
+export const MAX_TOKENS_SAIDA = 2048;
 
 export function criarModelosGemini(apiKey: string): ModelosGemini {
   return new GoogleGenAI({
@@ -39,6 +46,7 @@ export class GeminiInterpretador implements InterpretadorDeMensagem {
   constructor(
     private readonly modelos: ModelosGemini,
     private readonly modelo: string,
+    private readonly versao: VersaoPrompt = VERSAO_PROMPT_ATUAL,
   ) {}
 
   interpretar(
@@ -56,8 +64,10 @@ export class GeminiInterpretador implements InterpretadorDeMensagem {
   ): Promise<Interpretacao> {
     const bruto = await this.chamar(
       mensagemDoUsuario(texto),
-      instrucaoDeSistema(dataReferencia, 'texto'),
-      respostaInterpretacaoJsonSchema,
+      instrucaoDeSistema(dataReferencia, 'texto', this.versao),
+      this.versao === 'v5'
+        ? respostaInterpretacaoJsonSchemaV5
+        : respostaInterpretacaoJsonSchema,
     );
     return paraInterpretacao(
       interpretar(bruto, respostaInterpretacaoSchema),
@@ -83,8 +93,10 @@ export class GeminiInterpretador implements InterpretadorDeMensagem {
           ],
         },
       ],
-      instrucaoDeSistema(dataReferencia, 'audio'),
-      respostaInterpretacaoAudioJsonSchema,
+      instrucaoDeSistema(dataReferencia, 'audio', this.versao),
+      this.versao === 'v5'
+        ? respostaInterpretacaoAudioJsonSchemaV5
+        : respostaInterpretacaoAudioJsonSchema,
     );
     const { transcricao, ...resposta } = interpretar(
       bruto,
@@ -105,6 +117,7 @@ export class GeminiInterpretador implements InterpretadorDeMensagem {
         config: {
           systemInstruction,
           temperature: 0,
+          maxOutputTokens: MAX_TOKENS_SAIDA,
           responseMimeType: 'application/json',
           responseJsonSchema,
         },
