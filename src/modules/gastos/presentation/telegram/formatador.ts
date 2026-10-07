@@ -277,6 +277,10 @@ const MENSAGENS: [new (...args: never[]) => Error, string][] = [
   [DownloadFalhouError, '🎧 Não consegui baixar o áudio. Tente de novo.'],
 ];
 
+/** Popup do botão (texto puro, sem HTML): o Desfazer só falha por erro inesperado. */
+export const MENSAGEM_FALHA_AO_DESFAZER =
+  '🛠️ Não consegui desfazer agora. Tente de novo.';
+
 export const MENSAGEM_ERRO_INESPERADO =
   '🛠️ Algo deu errado do meu lado. Já registrei o problema.';
 

@@ -37,10 +37,10 @@ import {
   MENSAGEM_COMANDO_DESCONHECIDO,
   MENSAGEM_ESCOLHER_MES_EXPORTAR,
   MENSAGEM_NAO_SUPORTADO,
+  MENSAGEM_FALHA_AO_DESFAZER,
   MENSAGEM_TEXTO_LONGO,
   mensagemDeErro,
 } from './formatador.js';
-import { semTags } from './html.js';
 
 export interface DepsTelegram {
   processar: Pick<ProcessarMensagemUseCase, 'executar'>;
@@ -321,7 +321,7 @@ export async function tratarDesfazer(
     removidos = await deps.desfazer.executar(registroId);
   } catch (erro) {
     logarSeInesperado(erro, deps, 'tratarDesfazer');
-    await ctx.answerCallbackQuery(semTags(mensagemDeErro(erro)));
+    await ctx.answerCallbackQuery(MENSAGEM_FALHA_AO_DESFAZER);
     return;
   }
   // O registro já foi decidido: falha ao editar a mensagem não pode virar "erro".

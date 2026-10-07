@@ -23,6 +23,7 @@ import {
   MENSAGEM_AUDIO_LONGO,
   MENSAGEM_COMANDO_DESCONHECIDO,
   MENSAGEM_ESCOLHER_MES_EXPORTAR,
+  MENSAGEM_FALHA_AO_DESFAZER,
   MENSAGEM_TEXTO_LONGO,
   mensagemDeErro,
 } from './formatador.js';
@@ -281,16 +282,18 @@ describe('tratarDesfazer', () => {
     );
   });
 
-  it('popup de erro do Desfazer não leva tag HTML', async () => {
-    const ctx = ctxCallback(montarCallbackDesfazer(REGISTRO));
-    await tratarDesfazer(
-      ctx,
-      deps({
-        desfazer: falhando(new NenhumGastoNoPeriodoError(AGOSTO)),
-      }),
-    );
-    expect(ctx.answerCallbackQuery.mock.calls[0]![0]).not.toMatch(/[<>]/);
-  });
+  // O popup é texto puro: uma constante, nunca derivada de mensagem HTML.
+  it.each([new Error('db fora'), new NenhumGastoNoPeriodoError(AGOSTO)])(
+    'falha no Desfazer responde o popup fixo em texto puro (%s)',
+    async (erro) => {
+      const ctx = ctxCallback(montarCallbackDesfazer(REGISTRO));
+      await tratarDesfazer(ctx, deps({ desfazer: falhando(erro) }));
+      expect(ctx.answerCallbackQuery).toHaveBeenCalledWith(
+        MENSAGEM_FALHA_AO_DESFAZER,
+      );
+      expect(MENSAGEM_FALHA_AO_DESFAZER).not.toMatch(/[<>&]/);
+    },
+  );
 
   it('nada removido avisa e tira o botão', async () => {
     const d = deps({ desfazer: { executar: vi.fn(async () => 0) } });
@@ -322,7 +325,7 @@ describe('tratarDesfazer', () => {
     const ctx = ctxCallback(montarCallbackDesfazer(REGISTRO));
     await tratarDesfazer(ctx, d);
     expect(ctx.answerCallbackQuery).toHaveBeenCalledWith(
-      '🛠️ Algo deu errado do meu lado. Já registrei o problema.',
+      MENSAGEM_FALHA_AO_DESFAZER,
     );
     expect(d.logger.error).toHaveBeenCalledOnce();
   });
