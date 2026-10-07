@@ -57,7 +57,7 @@ export class TelegramBot implements OnModuleInit, OnModuleDestroy {
 
     const token = this.config.getOrThrow<string>('TELEGRAM_BOT_TOKEN');
     const bot = new Bot(token);
-    // Toda mensagem e legenda sai em HTML (textos do usuário são escapados no formatador).
+    // Toda mensagem e legenda sai em HTML; o tipo `Html` dos handlers obriga o escape do texto cru.
     bot.api.config.use(comHtml);
     const deps: DepsTelegram = {
       processar: this.processar,

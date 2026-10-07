@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { MENSAGEM_RATE_LIMIT } from './formatador.js';
+import { MENSAGEM_RATE_LIMIT, POPUP_RATE_LIMIT } from './formatador.js';
 import { criarRateLimit } from './rate-limit.js';
 
 function montar() {
@@ -29,7 +29,9 @@ describe('rate limit', () => {
     const cb = { ...ctx, callbackQuery: {}, answerCallbackQuery };
     for (let i = 0; i < 23; i++) await limite(cb, next);
     expect(answerCallbackQuery).toHaveBeenCalledTimes(3);
-    expect(answerCallbackQuery).toHaveBeenCalledWith(MENSAGEM_RATE_LIMIT);
+    expect(answerCallbackQuery).toHaveBeenCalledWith(POPUP_RATE_LIMIT);
+    // Popup é texto puro: sem tags nem entidades.
+    expect(POPUP_RATE_LIMIT).not.toMatch(/[<>&]/);
     expect(ctx.reply).toHaveBeenCalledOnce();
   });
 
