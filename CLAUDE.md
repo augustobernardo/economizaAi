@@ -27,6 +27,8 @@ Fluxo por etapa: Passo 0 → implementação → revisão → gate de segurança
 - Proibido ler `.env` (regras `deny` + hook `protege-segredos.mjs`).
 - Proibido SQL concatenado; saída de LLM sempre validada por zod.
 - Owner guard é o primeiro middleware do Telegram.
+- Respostas do bot são HTML: texto externo sempre escapado (`escaparHtml` ou
+  tag `html`, tipo `Html`); nunca remover tags com regex para reusar em HTML.
 - Nunca logar tokens, chaves, `DATABASE_URL` ou a URL de `getFileLink`.
 - `/dev/*` só fora de produção, com teste.
 - Dependência nova, skill nova ou mudança em `.claude/**` exige aprovação do dono.
@@ -278,6 +280,7 @@ recomeçou do zero em 2026-10-03.
 | 9 — (removida) | ❌ |
 | 10 — Exportação, resumo e últimos | ✅ (texto, voz e comandos) |
 | 11 — Docker + Easypanel | 🔧 pipeline pronto (Dockerfile, CI com trivy, deploy após CI verde); falta a configuração do dono e o 1º deploy |
+| 12 — Mensagens HTML, /resumo por mês, avaliação da IA | ✅ validada no bot de dev em 06/10 (HTML, Desfazer, voz, /resumo); prompt v5 em uso; falta commit |
 
 Infraestrutura de produção endurecida e com backup em 04/10/2026
 (ver `SECURITY.md` local, seção 7). `SECURITY.md`, `ROADMAP.md`,
