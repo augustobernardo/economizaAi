@@ -27,6 +27,8 @@ Fluxo por etapa: Passo 0 → implementação → revisão → gate de segurança
 - Proibido ler `.env` (regras `deny` + hook `protege-segredos.mjs`).
 - Proibido SQL concatenado; saída de LLM sempre validada por zod.
 - Owner guard é o primeiro middleware do Telegram.
+- Respostas do bot são HTML: texto externo sempre escapado (`escaparHtml` ou
+  tag `html`, tipo `Html`); nunca remover tags com regex para reusar em HTML.
 - Nunca logar tokens, chaves, `DATABASE_URL` ou a URL de `getFileLink`.
 - `/dev/*` só fora de produção, com teste.
 - Dependência nova, skill nova ou mudança em `.claude/**` exige aprovação do dono.
