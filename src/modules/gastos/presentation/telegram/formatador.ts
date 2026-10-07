@@ -29,7 +29,7 @@ import {
   MAX_DURACAO_AUDIO_S,
 } from '../limites.js';
 import { DownloadFalhouError } from './download.js';
-import { escaparHtml } from './html.js';
+import { escaparHtml, html, juntarHtml, type Html } from './html.js';
 
 export const EMOJI_CATEGORIA: Record<Categoria, string> = {
   alimentacao: '🍔',
@@ -69,66 +69,67 @@ function nomeDoPeriodo(periodo: Periodo): string {
     : periodo.descrever();
 }
 
-const EXEMPLOS = [
-  '• <i>gastei 30 no almoço</i>',
-  '• <i>uber 18,50 ontem</i>',
-  '• <i>mercado 120 e farmácia 40</i>',
+const EXEMPLOS: readonly Html[] = [
+  html`• <i>gastei 30 no almoço</i>`,
+  html`• <i>uber 18,50 ontem</i>`,
+  html`• <i>mercado 120 e farmácia 40</i>`,
 ];
 
-export const MENSAGEM_NENHUM_GASTO = [
-  '🔍 Não encontrei nenhum gasto nessa mensagem.',
-  '',
-  'Tente algo como:',
+export const MENSAGEM_NENHUM_GASTO = juntarHtml([
+  html`🔍 Não encontrei nenhum gasto nessa mensagem.`,
+  html``,
+  html`Tente algo como:`,
   ...EXEMPLOS.slice(0, 2),
-].join('\n');
+]);
 
-export const TEXTO_START = [
-  '👋 Olá! Eu sou o <b>Eco</b>, seu assistente de gastos.',
-  '',
-  'Me conte o que você gastou, por texto ou áudio, que eu registro tudo pra você. 💸',
-  '',
-  '<b>✨ O que eu faço</b>',
-  '✍️ Registro gastos enviados por texto',
-  '🎙️ Entendo mensagens de áudio',
-  '🧠 Identifico valor, categoria e data sozinho',
-  '🧾 Registro vários gastos numa mensagem só',
-  '↩️ Desfaço um registro com um toque',
-  '📈 Resumo o mês por categoria',
-  '📊 Exporto as movimentações em CSV e Markdown',
-  '',
-  '<b>💬 Experimente mandar</b>',
+export const TEXTO_START = juntarHtml([
+  html`👋 Olá! Eu sou o <b>Eco</b>, seu assistente de gastos.`,
+  html``,
+  html`Me conte o que você gastou, por texto ou áudio, que eu registro tudo pra você. 💸`,
+  html``,
+  html`<b>✨ O que eu faço</b>`,
+  html`✍️ Registro gastos enviados por texto`,
+  html`🎙️ Entendo mensagens de áudio`,
+  html`🧠 Identifico valor, categoria e data sozinho`,
+  html`🧾 Registro vários gastos numa mensagem só`,
+  html`↩️ Desfaço um registro com um toque`,
+  html`📈 Resumo o mês por categoria`,
+  html`📊 Exporto as movimentações em CSV e Markdown`,
+  html``,
+  html`<b>💬 Experimente mandar</b>`,
   ...EXEMPLOS,
-  '',
-  '<b>⚙️ Comandos</b>',
-  '/ajuda: exemplos e dicas',
-  '/resumo: resumo do mês',
-  '/ultimos: últimos gastos',
-  '/exportar: exportar o mês',
-  '',
-  '🔒 Só respondo a você, e seus registros ficam guardados no seu próprio servidor.',
-].join('\n');
+  html``,
+  html`<b>⚙️ Comandos</b>`,
+  html`/ajuda: exemplos e dicas`,
+  html`/resumo: resumo do mês`,
+  html`/ultimos: últimos gastos`,
+  html`/exportar: exportar o mês`,
+  html``,
+  html`🔒 Só respondo a você, e seus registros ficam guardados no seu próprio servidor.`,
+]);
 
-export const TEXTO_AJUDA = [
-  '💡 <b>Como usar o Eco</b>',
-  '',
-  '<b>Registrar</b>',
+export const TEXTO_AJUDA = juntarHtml([
+  html`💡 <b>Como usar o Eco</b>`,
+  html``,
+  html`<b>Registrar</b>`,
   ...EXEMPLOS,
-  '• <i>anteontem cinquenta reais de farmácia</i>',
-  '• <i>2 cafés de 8 na sexta</i>',
-  '',
-  '<b>Perguntar</b>',
-  '• <i>quanto gastei em setembro?</i>',
-  '• <i>exporta meus gastos de agosto</i>',
-  '• <i>quais foram meus últimos gastos?</i>',
-  '',
-  '<b>⚙️ Comandos</b>',
-  '/resumo: mês atual, ou <code>/resumo 2026-09</code> para outro mês',
-  '/ultimos: últimos gastos',
-  '/exportar: exportar o mês',
-  '',
-  '↩️ O botão Desfazer vale por 1 hora.',
-].join('\n');
+  html`• <i>anteontem cinquenta reais de farmácia</i>`,
+  html`• <i>2 cafés de 8 na sexta</i>`,
+  html``,
+  html`<b>Perguntar</b>`,
+  html`• <i>quanto gastei em setembro?</i>`,
+  html`• <i>exporta meus gastos de agosto</i>`,
+  html`• <i>quais foram meus últimos gastos?</i>`,
+  html``,
+  html`<b>⚙️ Comandos</b>`,
+  html`/resumo: mês atual, ou <code>/resumo 2026-09</code> para outro mês`,
+  html`/ultimos: últimos gastos`,
+  html`/exportar: exportar o mês`,
+  html``,
+  html`↩️ O botão Desfazer vale por 1 hora.`,
+]);
 
+/** Menu do Telegram (texto puro, não é HTML). */
 export const COMANDOS = [
   { command: 'start', description: 'Apresentação do Eco' },
   { command: 'ajuda', description: 'Exemplos e dicas' },
@@ -137,162 +138,149 @@ export const COMANDOS = [
   { command: 'exportar', description: 'Exportar o mês em CSV e Markdown' },
 ];
 
-export const MENSAGEM_TEXTO_LONGO = `✂️ Mensagem muito longa (máximo de ${MAX_CARACTERES_TEXTO} caracteres). Pode resumir?`;
-export const MENSAGEM_AUDIO_LONGO = `🎧 Esse áudio é longo demais. Mande um de até ${MAX_DURACAO_AUDIO_S} segundos.`;
-export const MENSAGEM_AUDIO_GRANDE = `🎧 Esse áudio é grande demais (máximo de ${MAX_BYTES_AUDIO / BYTES_POR_MB} MB).`;
-export const MENSAGEM_NAO_SUPORTADO =
-  '🙈 Por enquanto só entendo mensagens de texto e de voz.';
-export const MENSAGEM_COMANDO_DESCONHECIDO =
-  '❓ Não conheço esse comando. Veja /ajuda';
-export const MENSAGEM_RATE_LIMIT =
+export const MENSAGEM_TEXTO_LONGO = html`✂️ Mensagem muito longa (máximo de ${MAX_CARACTERES_TEXTO} caracteres). Pode resumir?`;
+export const MENSAGEM_AUDIO_LONGO = html`🎧 Esse áudio é longo demais. Mande um de até ${MAX_DURACAO_AUDIO_S} segundos.`;
+export const MENSAGEM_AUDIO_GRANDE = html`🎧 Esse áudio é grande demais (máximo de ${MAX_BYTES_AUDIO / BYTES_POR_MB} MB).`;
+export const MENSAGEM_NAO_SUPORTADO = html`🙈 Por enquanto só entendo mensagens de texto e de voz.`;
+export const MENSAGEM_COMANDO_DESCONHECIDO = html`❓ Não conheço esse comando. Veja /ajuda`;
+/** Popup do botão barrado (texto puro, sem HTML); o chat recebe a versão `Html`. */
+export const POPUP_RATE_LIMIT =
   '⏳ Calma! Muitas mensagens seguidas. Espere um minuto.';
-export const MENSAGEM_ESCOLHER_MES_EXPORTAR =
-  '📊 <b>Exportar movimentações</b>\nQual mês você quer exportar?';
+export const MENSAGEM_RATE_LIMIT = html`${POPUP_RATE_LIMIT}`;
+export const MENSAGEM_ESCOLHER_MES_EXPORTAR = html`📊 <b>Exportar movimentações</b>\nQual mês você quer exportar?`;
 
-export function formatarRegistro(
-  gastos: readonly Gasto[],
-  hoje: string,
-): string {
+export function formatarRegistro(gastos: readonly Gasto[], hoje: string): Html {
   const [unico] = gastos;
   if (unico && gastos.length === 1) {
-    return [
-      '✅ <b>Gasto registrado!</b>',
-      '',
-      comEmoji(unico.categoria),
-      `💰 ${unico.valor.formatar()}`,
-      `📝 ${escaparHtml(unico.descricao)}`,
-      `📅 ${dataRelativa(unico.dataGasto, hoje)}`,
-    ].join('\n');
+    return juntarHtml([
+      html`✅ <b>Gasto registrado!</b>`,
+      html``,
+      html`${comEmoji(unico.categoria)}`,
+      html`💰 ${unico.valor.formatar()}`,
+      html`📝 ${unico.descricao}`,
+      html`📅 ${dataRelativa(unico.dataGasto, hoje)}`,
+    ]);
   }
   const total = Dinheiro.deCentavos(
     gastos.reduce((soma, g) => soma + g.valor.centavos, 0),
   );
-  return [
-    `✅ <b>${gastos.length} gastos registrados!</b>`,
-    '',
+  return juntarHtml([
+    html`✅ <b>${gastos.length} gastos registrados!</b>`,
+    html``,
     ...gastos.flatMap((g) => [
-      `${comEmoji(g.categoria)}: ${g.valor.formatar()}`,
-      `     ${escaparHtml(g.descricao)} · ${dataRelativa(g.dataGasto, hoje)}`,
+      html`${comEmoji(g.categoria)}: ${g.valor.formatar()}`,
+      html`     ${g.descricao} · ${dataRelativa(g.dataGasto, hoje)}`,
     ]),
-    '',
-    `💵 <b>Total: ${total.formatar()}</b>`,
-  ].join('\n');
+    html``,
+    html`💵 <b>Total: ${total.formatar()}</b>`,
+  ]);
 }
 
 /** Mantém a legenda do documento dentro de 1024 caracteres (limite do Telegram). */
 const MAX_TRANSCRICAO = 500;
 
 /** Prefixa o HTML com a transcrição (cortada e escapada); vazia não gera a linha. */
-export function comTranscricao(transcricao: string, html: string): string {
-  if (!transcricao) return html;
+export function comTranscricao(transcricao: string, corpo: Html): Html {
+  if (!transcricao) return corpo;
   const letras = Array.from(transcricao);
   const curta =
     letras.length > MAX_TRANSCRICAO
       ? `${letras.slice(0, MAX_TRANSCRICAO - 1).join('')}…`
       : transcricao;
-  return `🎙️ Entendi: "${escaparHtml(curta)}"\n\n${html}`;
+  return html`🎙️ Entendi: "${curta}"\n\n${[corpo]}`;
 }
 
-export function formatarSemGastoNoAudio(transcricao: string): string {
+export function formatarSemGastoNoAudio(transcricao: string): Html {
   return comTranscricao(transcricao, MENSAGEM_NENHUM_GASTO);
 }
 
-export function formatarResumo(
-  periodo: Periodo,
-  resumo: ResumoDeGastos,
-): string {
+export function formatarResumo(periodo: Periodo, resumo: ResumoDeGastos): Html {
   const { maiorGasto: m } = resumo;
-  return [
-    `📊 <b>Resumo de ${nomeDoPeriodo(periodo)}</b>`,
-    `💵 Total: ${resumo.total.formatar()} · ${plural(resumo.quantidade, 'registro', 'registros')}`,
-    '',
+  return juntarHtml([
+    html`📊 <b>Resumo de ${nomeDoPeriodo(periodo)}</b>`,
+    html`💵 Total: ${resumo.total.formatar()} · ${plural(resumo.quantidade, 'registro', 'registros')}`,
+    html``,
     ...resumo.porCategoria.map(
       (c) =>
-        `${comEmoji(c.categoria)}: ${c.total.formatar()} (${c.percentual}%)`,
+        html`${comEmoji(c.categoria)}: ${c.total.formatar()} (${c.percentual}%)`,
     ),
-    '',
-    `🏆 Maior gasto: ${m.valor.formatar()} · ${rotulo(m.categoria)} · ${diaMes(m.dataGasto)}`,
-  ].join('\n');
+    html``,
+    html`🏆 Maior gasto: ${m.valor.formatar()} · ${rotulo(m.categoria)} · ${diaMes(m.dataGasto)}`,
+  ]);
 }
 
-export function formatarUltimos(
-  gastos: readonly Gasto[],
-  hoje: string,
-): string {
+export function formatarUltimos(gastos: readonly Gasto[], hoje: string): Html {
   const titulo =
     gastos.length === 1
-      ? '🧾 <b>Último gasto</b>'
-      : `🧾 <b>Últimos ${gastos.length} gastos</b>`;
-  return [
+      ? html`🧾 <b>Último gasto</b>`
+      : html`🧾 <b>Últimos ${gastos.length} gastos</b>`;
+  return juntarHtml([
     titulo,
-    '',
+    html``,
     ...gastos.map(
       (g) =>
-        `${EMOJI_CATEGORIA[g.categoria]} ${dataRelativa(g.dataGasto, hoje)} · ${g.valor.formatar()} · ${escaparHtml(g.descricao)}`,
+        html`${EMOJI_CATEGORIA[g.categoria]} ${dataRelativa(g.dataGasto, hoje)} · ${g.valor.formatar()} · ${g.descricao}`,
     ),
-  ].join('\n');
+  ]);
 }
 
-export function legendaExportacao(
-  periodo: Periodo,
-  quantidade: number,
-): string {
-  return `📎 Aqui está o seu arquivo de <b>${nomeDoPeriodo(periodo)}</b> (${plural(quantidade, 'gasto', 'gastos')}).`;
+export function legendaExportacao(periodo: Periodo, quantidade: number): Html {
+  return html`📎 Aqui está o seu arquivo de <b>${nomeDoPeriodo(periodo)}</b> (${plural(quantidade, 'gasto', 'gastos')}).`;
 }
 
 /** O texto original vem de `message.text` (cru): é escapado antes de voltar como HTML. */
-export function formatarDesfeito(textoOriginal: string): string {
+export function formatarDesfeito(textoOriginal: string): Html {
   const original = escaparHtml(textoOriginal.trim());
-  return [original, '↩️ <b>Pronto, desfiz o registro.</b>']
-    .filter(Boolean)
-    .join('\n\n');
+  return juntarHtml(
+    [original, html`↩️ <b>Pronto, desfiz o registro.</b>`].filter(Boolean),
+    '\n\n',
+  );
 }
 
-const MENSAGENS: [new (...args: never[]) => Error, string][] = [
+const MENSAGENS: [new (...args: never[]) => Error, Html][] = [
   [NenhumGastoEncontradoError, MENSAGEM_NENHUM_GASTO],
   [
     ProvedorIndisponivelError,
-    '😵 Estou com dificuldade para entender agora. Tente em alguns minutos.',
+    html`😵 Estou com dificuldade para entender agora. Tente em alguns minutos.`,
   ],
-  [RespostaInvalidaDaIaError, '🤔 Não consegui entender. Pode reformular?'],
+  [RespostaInvalidaDaIaError, html`🤔 Não consegui entender. Pode reformular?`],
   [
     ValorAcimaDoTetoError,
-    '⚠️ Esse valor parece alto demais. O limite é R$ 50.000,00 por gasto.',
+    html`⚠️ Esse valor parece alto demais. O limite é R$ 50.000,00 por gasto.`,
   ],
-  [ValorInvalidoError, '⚠️ Não consegui entender o valor.'],
+  [ValorInvalidoError, html`⚠️ Não consegui entender o valor.`],
   [
     DataFuturaError,
-    '📅 Essa data não parece certa: o gasto não pode ser no futuro.',
+    html`📅 Essa data não parece certa: o gasto não pode ser no futuro.`,
   ],
   [
     DataForaDaJanelaError,
-    '📅 Essa data não parece certa: só registro gastos de até 1 ano atrás.',
+    html`📅 Essa data não parece certa: só registro gastos de até 1 ano atrás.`,
   ],
-  [DataInvalidaError, '📅 Essa data não parece certa.'],
-  [DescricaoVaziaError, '📝 Faltou dizer com o que foi o gasto.'],
-  [PeriodoFuturoError, '📅 O período informado está no futuro.'],
-  [PeriodoInvertidoError, '📅 A data inicial é depois da data final.'],
-  [PeriodoLongoDemaisError, '📅 O intervalo máximo é de 1 ano.'],
-  [NenhumGastoRegistradoError, '🧾 Você ainda não registrou nenhum gasto.'],
-  [DownloadFalhouError, '🎧 Não consegui baixar o áudio. Tente de novo.'],
+  [DataInvalidaError, html`📅 Essa data não parece certa.`],
+  [DescricaoVaziaError, html`📝 Faltou dizer com o que foi o gasto.`],
+  [PeriodoFuturoError, html`📅 O período informado está no futuro.`],
+  [PeriodoInvertidoError, html`📅 A data inicial é depois da data final.`],
+  [PeriodoLongoDemaisError, html`📅 O intervalo máximo é de 1 ano.`],
+  [NenhumGastoRegistradoError, html`🧾 Você ainda não registrou nenhum gasto.`],
+  [DownloadFalhouError, html`🎧 Não consegui baixar o áudio. Tente de novo.`],
 ];
 
 /** Popup do botão (texto puro, sem HTML): o Desfazer só falha por erro inesperado. */
 export const MENSAGEM_FALHA_AO_DESFAZER =
   '🛠️ Não consegui desfazer agora. Tente de novo.';
 
-export const MENSAGEM_ERRO_INESPERADO =
-  '🛠️ Algo deu errado do meu lado. Já registrei o problema.';
+export const MENSAGEM_ERRO_INESPERADO = html`🛠️ Algo deu errado do meu lado. Já registrei o problema.`;
 
 /** Mensagem amigável (HTML); nunca expõe a mensagem interna do erro. */
-export function mensagemDeErro(erro: unknown): string {
+export function mensagemDeErro(erro: unknown): Html {
   if (erro instanceof NenhumGastoNoPeriodoError) {
     const { periodo } = erro;
     if (periodo.tipo === 'mes')
-      return `🗓️ Nenhum gasto registrado em <b>${nomeDoPeriodo(periodo)}</b>.`;
+      return html`🗓️ Nenhum gasto registrado em <b>${nomeDoPeriodo(periodo)}</b>.`;
     const onde =
       periodo.tipo === 'dia' ? 'na data informada' : 'no intervalo informado';
-    return `🗓️ Nenhum gasto registrado ${onde} (<b>${periodo.descrever()}</b>).`;
+    return html`🗓️ Nenhum gasto registrado ${onde} (<b>${periodo.descrever()}</b>).`;
   }
   const par = MENSAGENS.find(([Classe]) => erro instanceof Classe);
   return par ? par[1] : MENSAGEM_ERRO_INESPERADO;

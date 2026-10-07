@@ -45,6 +45,7 @@ import {
   TEXTO_AJUDA,
   TEXTO_START,
 } from './formatador.js';
+import { html } from './html.js';
 
 const HOJE = '2026-10-05';
 const g = (
@@ -125,22 +126,22 @@ describe('formatarRegistro', () => {
 
 describe('áudio', () => {
   it('prefixa com 🎙️ e a transcrição escapada entre aspas', () => {
-    expect(comTranscricao('gastei <50>', 'X')).toBe(
+    expect(comTranscricao('gastei <50>', html`X`)).toBe(
       '🎙️ Entendi: "gastei &lt;50&gt;"\n\nX',
     );
   });
   it('corte não parte emoji ao meio', () => {
-    const saida = comTranscricao('a'.repeat(498) + '😀'.repeat(5), 'X');
+    const saida = comTranscricao('a'.repeat(498) + '😀'.repeat(5), html`X`);
     expect(saida).not.toMatch(
       /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/,
     );
     expect(saida).toContain('😀…');
   });
   it('transcrição vazia não gera prefixo', () => {
-    expect(comTranscricao('', 'X')).toBe('X');
+    expect(comTranscricao('', html`X`)).toBe('X');
   });
   it('transcrição longa é cortada em 500 caracteres antes do escape', () => {
-    const saida = comTranscricao('&'.repeat(2000), 'X');
+    const saida = comTranscricao('&'.repeat(2000), html`X`);
     expect(saida).toContain(`"${'&amp;'.repeat(499)}…"`);
   });
 });
@@ -266,7 +267,7 @@ describe('todas as mensagens', () => {
     ajuda: TEXTO_AJUDA,
     registro: formatarRegistro([g(10, 'lazer', 'Cinema')], HOJE),
     varios: formatarRegistro([g(10, 'lazer', 'a'), g(5, 'saude', 'b')], HOJE),
-    audio: comTranscricao('oi', 'x'),
+    audio: comTranscricao('oi', html`x`),
     semGastoAudio: formatarSemGastoNoAudio('oi'),
     resumo: formatarResumo(PERIODO, resumir([g(10, 'lazer', 'a')])),
     ultimos: formatarUltimos([g(10, 'lazer', 'a')], HOJE),

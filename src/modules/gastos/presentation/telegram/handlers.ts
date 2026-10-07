@@ -41,6 +41,7 @@ import {
   MENSAGEM_TEXTO_LONGO,
   mensagemDeErro,
 } from './formatador.js';
+import type { Html } from './html.js';
 
 export interface DepsTelegram {
   processar: Pick<ProcessarMensagemUseCase, 'executar'>;
@@ -53,15 +54,19 @@ export interface DepsTelegram {
   baixarArquivo(filePath: string): Promise<Buffer>;
 }
 
-/** O que os handlers usam para responder; o parse_mode HTML vem do transformer `comHtml`. */
+/**
+ * O que os handlers usam para responder; o parse_mode HTML vem do transformer
+ * `comHtml`. Só aceita `Html`: texto cru precisa passar pelo escape. O popup
+ * (`answerCallbackQuery`) é texto puro e fica `string`.
+ */
 export interface CtxResposta {
   reply(
-    texto: string,
+    texto: Html,
     extra?: { reply_markup?: InlineKeyboard },
   ): Promise<unknown>;
   replyWithDocument(
     doc: InputFile,
-    extra?: { caption?: string },
+    extra?: { caption?: Html },
   ): Promise<unknown>;
 }
 
@@ -81,7 +86,7 @@ export interface CtxComando extends CtxResposta {
 export interface CtxCallback extends CtxResposta {
   callbackQuery: { data?: string; message?: { text?: string } };
   answerCallbackQuery(texto?: string): Promise<unknown>;
-  editMessageText(texto: string): Promise<unknown>;
+  editMessageText(texto: Html): Promise<unknown>;
   editMessageReplyMarkup(): Promise<unknown>;
 }
 
@@ -124,7 +129,7 @@ async function responderErro(
 async function enviarDocumentos(
   ctx: CtxResposta,
   arquivos: readonly ArquivoExportado[],
-  legenda: string,
+  legenda: Html,
 ): Promise<void> {
   for (const [i, arquivo] of arquivos.entries()) {
     await ctx.replyWithDocument(
@@ -141,7 +146,7 @@ export async function responder(
   hoje: string,
   transcricao?: string,
 ): Promise<void> {
-  const comVoz = (texto: string) =>
+  const comVoz = (texto: Html): Html =>
     transcricao === undefined ? texto : comTranscricao(transcricao, texto);
   switch (resultado.tipo) {
     case 'registro':
@@ -383,7 +388,7 @@ export async function tratarCallback(
 }
 
 export async function tratarNaoSuportado(ctx: {
-  reply(texto: string): Promise<unknown>;
+  reply(texto: Html): Promise<unknown>;
 }): Promise<void> {
   await ctx.reply(MENSAGEM_NAO_SUPORTADO);
 }

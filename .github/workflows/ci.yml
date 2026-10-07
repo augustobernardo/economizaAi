@@ -80,6 +80,9 @@ jobs:
       - name: Lint
         run: pnpm lint
 
+      - name: Checagem de tipos (inclui os @ts-expect-error dos specs)
+        run: pnpm typecheck
+
       - name: Testes unitários
         run: pnpm test
 
