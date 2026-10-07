@@ -113,3 +113,41 @@ describe('Periodo', () => {
     );
   });
 });
+
+describe('Periodo.doMesInformado', () => {
+  it('mês passado inteiro', () => {
+    const p = Periodo.doMesInformado('2026-09', '2026-10-05');
+    expect([p.inicio, p.fim, p.tipo]).toEqual([
+      '2026-09-01',
+      '2026-09-30',
+      'mes',
+    ]);
+  });
+
+  it('mês atual é cortado em hoje', () => {
+    expect(Periodo.doMesInformado('2026-10', '2026-10-05').fim).toBe(
+      '2026-10-05',
+    );
+  });
+
+  it('fevereiro bissexto', () => {
+    expect(Periodo.doMesInformado('2024-02', '2026-10-05').fim).toBe(
+      '2024-02-29',
+    );
+  });
+
+  it.each(['2026-00', '2026-13', '2026-1', '26-09', 'setembro'])(
+    '"%s" → DataInvalidaError',
+    (m) => {
+      expect(() => Periodo.doMesInformado(m, '2026-10-05')).toThrow(
+        DataInvalidaError,
+      );
+    },
+  );
+
+  it('mês futuro → PeriodoFuturoError', () => {
+    expect(() => Periodo.doMesInformado('2026-11', '2026-10-05')).toThrow(
+      PeriodoFuturoError,
+    );
+  });
+});

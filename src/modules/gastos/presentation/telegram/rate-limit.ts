@@ -1,12 +1,11 @@
+import { MENSAGEM_RATE_LIMIT } from './formatador.js';
+
 export interface CtxRateLimit {
   from?: { id: number };
   callbackQuery?: unknown;
   reply(texto: string): Promise<unknown>;
   answerCallbackQuery?(texto?: string): Promise<unknown>;
 }
-
-export const MENSAGEM_RATE_LIMIT =
-  'Muitas mensagens seguidas, espere um minuto.';
 
 /** Janela fixa por `from.id` (SECURITY.md §3.2: proteção contra loop e cota). */
 export function criarRateLimit(opcoes: {
