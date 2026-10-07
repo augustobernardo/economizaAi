@@ -83,9 +83,19 @@ export class Periodo {
     const indice = ano * 12 + (mes - 1) + deslocamento;
     const a = Math.floor(indice / 12);
     const m = (indice % 12) + 1;
-    const mm = String(m).padStart(2, '0');
-    const ultimo = String(ultimoDiaDoMes(a, m)).padStart(2, '0');
-    return Periodo.criar(`${a}-${mm}-01`, `${a}-${mm}-${ultimo}`, hoje);
+    return Periodo.doMesInformado(`${a}-${String(m).padStart(2, '0')}`, hoje);
+  }
+
+  /** `AAAA-MM` (mês 01–12) → mês inteiro, cortado em hoje. */
+  static doMesInformado(mes: string, hoje: string): Periodo {
+    const partes = /^(\d{4})-(\d{2})$/.exec(mes);
+    const numeroDoMes = Number(partes?.[2]);
+    if (!partes || numeroDoMes < 1 || numeroDoMes > 12)
+      throw new DataInvalidaError(`Mês inválido: "${mes}"`);
+    const ultimo = String(
+      ultimoDiaDoMes(Number(partes[1]), numeroDoMes),
+    ).padStart(2, '0');
+    return Periodo.criar(`${mes}-01`, `${mes}-${ultimo}`, hoje);
   }
 
   get fimExclusivo(): string {

@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
-import { criarRateLimit, MENSAGEM_RATE_LIMIT } from './rate-limit.js';
+import { MENSAGEM_RATE_LIMIT } from './formatador.js';
+import { criarRateLimit } from './rate-limit.js';
 
 function montar() {
   let agora = 0;

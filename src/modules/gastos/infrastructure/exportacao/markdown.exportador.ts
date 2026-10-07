@@ -6,7 +6,7 @@ import { ROTULOS_CATEGORIA } from '../../domain/categoria.js';
 import { formatarDataBr } from '../../domain/data-civil.js';
 import type { Gasto } from '../../domain/gasto.js';
 import type { Periodo } from '../../domain/periodo.js';
-import { formatarPercentual, plural, resumir } from '../../domain/resumo.js';
+import { plural, resumir } from '../../domain/resumo.js';
 
 /** Texto do usuário vira literal: sem quebrar a tabela nem virar link, imagem ou HTML. */
 const celula = (texto: string) =>
@@ -34,7 +34,7 @@ export class MarkdownExportador implements Exportador {
       '|---|---|---|',
       ...r.porCategoria.map((c) => {
         const nome = ROTULOS_CATEGORIA[c.categoria];
-        return `| ${nome} | ${c.total.formatar()} | ${formatarPercentual(c.percentual)} |`;
+        return `| ${nome} | ${c.total.formatar()} | ${c.percentual}% |`;
       }),
       '',
       `**Maior gasto:** ${celula(maior.descricao)} — ${maior.valor.formatar()}` +

@@ -116,15 +116,30 @@ In Telegram, with the development bot:
 
 ```
 you: ontem 18 num açaí e 120 no mercado
-bot: ✅ 2 gastos registrados
-     • R$ 18,00 — açaí (alimentação) — 04/10
-     • R$ 120,00 — mercado (mercado) — 04/10
-     Total: R$ 138,00
+bot: ✅ 2 gastos registrados!
+
+     🍔 Alimentação: R$ 18,00
+          Açaí · Ontem, 04/10
+     🛒 Mercado: R$ 120,00
+          Mercado · Ontem, 04/10
+
+     💵 Total: R$ 138,00
      [↩️ Desfazer]
+
+you: /resumo 2026-10
+bot: 📊 Resumo de outubro/2026
+     💵 Total: R$ 138,00 · 2 registros
+
+     🛒 Mercado: R$ 120,00 (87%)
+     🍔 Alimentação: R$ 18,00 (13%)
+
+     🏆 Maior gasto: R$ 120,00 · Mercado · 04/10
 ```
 
-Commands: `/exportar`, `/resumo`, `/ultimos` and `/ajuda`. Natural-language
-requests ("quanto gastei em setembro?") work too.
+Replies use Telegram HTML with one emoji per category; user text is always
+escaped. Commands: `/resumo` (current month, or `/resumo 2026-09`),
+`/exportar`, `/ultimos` and `/ajuda`, also listed in the Telegram menu.
+Natural-language requests ("quanto gastei em setembro?") work too.
 
 Outside production, HTTP routes let you test without Telegram:
 
@@ -148,7 +163,10 @@ pnpm lint
 
 > [!NOTE]
 > `pnpm test:ia` calls the real Gemini API and uses quota. It is run by hand
-> and never in CI.
+> and never in CI. The same goes for `pnpm eval:ia`, which scores the
+> extraction prompt against 44 fictional cases in `test/eval/casos.json`
+> (`EVAL_PROMPT=v1..v5`, `EVAL_CONJUNTO=treino|holdout|todos`; add
+> `--reporter=default` to see the report).
 
 ## Development workflow
 

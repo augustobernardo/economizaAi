@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Bot } from 'grammy';
+import { RELOGIO, type Relogio } from '../../application/ports/relogio.js';
 import { DesfazerRegistroUseCase } from '../../application/use-cases/desfazer-registro.use-case.js';
 import { ExportarGastosUseCase } from '../../application/use-cases/exportar-gastos.use-case.js';
 import { ListarUltimosGastosUseCase } from '../../application/use-cases/listar-ultimos-gastos.use-case.js';
@@ -14,7 +15,7 @@ import { ProcessarMensagemUseCase } from '../../application/use-cases/processar-
 import { ResumirGastosUseCase } from '../../application/use-cases/resumir-gastos.use-case.js';
 import { MAX_BYTES_AUDIO } from '../limites.js';
 import { baixarArquivo, TIMEOUT_DOWNLOAD_MS } from './download.js';
-import { TEXTO_AJUDA, TEXTO_START } from './formatador.js';
+import { COMANDOS, TEXTO_AJUDA, TEXTO_START } from './formatador.js';
 import {
   tratarCallback,
   tratarComandoExportar,
@@ -25,6 +26,7 @@ import {
   tratarVoz,
   type DepsTelegram,
 } from './handlers.js';
+import { comHtml } from './html.js';
 import { criarOwnerGuard } from './owner-guard.js';
 import { criarRateLimit } from './rate-limit.js';
 
@@ -46,6 +48,7 @@ export class TelegramBot implements OnModuleInit, OnModuleDestroy {
     private readonly listarUltimos: ListarUltimosGastosUseCase,
     @Inject(DesfazerRegistroUseCase)
     private readonly desfazer: DesfazerRegistroUseCase,
+    @Inject(RELOGIO) private readonly relogio: Relogio,
   ) {}
 
   onModuleInit(): void {
@@ -54,6 +57,8 @@ export class TelegramBot implements OnModuleInit, OnModuleDestroy {
 
     const token = this.config.getOrThrow<string>('TELEGRAM_BOT_TOKEN');
     const bot = new Bot(token);
+    // Toda mensagem e legenda sai em HTML (textos do usuário são escapados no formatador).
+    bot.api.config.use(comHtml);
     const deps: DepsTelegram = {
       processar: this.processar,
       exportar: this.exportar,
@@ -61,6 +66,7 @@ export class TelegramBot implements OnModuleInit, OnModuleDestroy {
       listarUltimos: this.listarUltimos,
       desfazer: this.desfazer,
       logger: this.logger,
+      relogio: this.relogio,
       // A URL carrega o token: existe só aqui e nunca é logada.
       baixarArquivo: (caminho) =>
         baixarArquivo(`https://api.telegram.org/file/bot${token}/${caminho}`, {
@@ -69,13 +75,9 @@ export class TelegramBot implements OnModuleInit, OnModuleDestroy {
         }),
     };
 
+    const ownerId = Number(this.config.getOrThrow('TELEGRAM_OWNER_ID'));
     // A ordem importa: owner guard é sempre o primeiro (SECURITY.md §3.2).
-    bot.use(
-      criarOwnerGuard(
-        Number(this.config.getOrThrow('TELEGRAM_OWNER_ID')),
-        this.logger,
-      ),
-    );
+    bot.use(criarOwnerGuard(ownerId, this.logger));
     bot.use(criarRateLimit({ limite: 20, janelaMs: 60_000 }));
     bot.command('start', (ctx) => ctx.reply(TEXTO_START));
     bot.command('ajuda', (ctx) => ctx.reply(TEXTO_AJUDA));
@@ -93,6 +95,15 @@ export class TelegramBot implements OnModuleInit, OnModuleDestroy {
         `Erro não tratado no update ${err.ctx.update.update_id}: ${erro instanceof Error ? erro.name : typeof erro}`,
       );
     });
+
+    // Menu de comandos só no chat do dono (sem escopo, estranhos o veriam); falha não derruba o boot.
+    bot.api
+      .setMyCommands(COMANDOS, { scope: { type: 'chat', chat_id: ownerId } })
+      .catch((erro: unknown) => {
+        this.logger.error(
+          `setMyCommands falhou: ${erro instanceof Error ? erro.name : typeof erro}`,
+        );
+      });
 
     // Sem await: long polling não pode travar o boot. Falha (409, token inválido) não derruba o app.
     bot

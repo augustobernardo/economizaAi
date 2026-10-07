@@ -5,7 +5,7 @@ import type { Gasto } from './gasto.js';
 export interface TotalPorCategoria {
   categoria: Categoria;
   total: Dinheiro;
-  /** Participação no total, com uma casa decimal. */
+  /** Participação inteira no total; a soma é 100. */
   percentual: number;
 }
 
@@ -19,9 +19,23 @@ export interface ResumoDeGastos {
 export const plural = (n: number, singular: string, plural: string): string =>
   `${n} ${n === 1 ? singular : plural}`;
 
-/** `50` → `50%`, `33.3` → `33,3%`. */
-export const formatarPercentual = (n: number): string =>
-  `${String(n).replace('.', ',')}%`;
+/** Inteiros pelo maior resto (Hamilton): a soma é sempre 100. Empate de resto: ordem de `centavos`. */
+function percentuaisInteiros(
+  centavos: readonly number[],
+  total: number,
+): number[] {
+  const base = centavos.map((c) => Math.floor((c * 100) / total));
+  const restos = centavos.map((c) => (c * 100) % total);
+  let faltam = 100 - base.reduce((s, p) => s + p, 0);
+  const porResto = centavos
+    .map((_, i) => i)
+    .sort((a, b) => (restos[b] ?? 0) - (restos[a] ?? 0) || a - b);
+  for (const i of porResto) {
+    if (faltam-- <= 0) break;
+    base[i] = (base[i] ?? 0) + 1;
+  }
+  return base;
+}
 
 /** Resume uma lista não vazia de gastos; lista vazia é erro de programação. */
 export function resumir(gastos: readonly Gasto[]): ResumoDeGastos {
@@ -40,16 +54,22 @@ export function resumir(gastos: readonly Gasto[]): ResumoDeGastos {
     if (gasto.valor.centavos > maiorGasto.valor.centavos) maiorGasto = gasto;
   }
 
+  const ordenadas = [...porCategoria].sort(
+    ([catA, a], [catB, b]) => b - a || catA.localeCompare(catB),
+  );
+  const percentuais = percentuaisInteiros(
+    ordenadas.map(([, c]) => c),
+    totalCentavos,
+  );
+
   return {
     quantidade: gastos.length,
     total: Dinheiro.deCentavos(totalCentavos),
-    porCategoria: [...porCategoria]
-      .sort(([catA, a], [catB, b]) => b - a || catA.localeCompare(catB))
-      .map(([categoria, centavos]) => ({
-        categoria,
-        total: Dinheiro.deCentavos(centavos),
-        percentual: Math.round((centavos * 1000) / totalCentavos) / 10,
-      })),
+    porCategoria: ordenadas.map(([categoria, centavos], i) => ({
+      categoria,
+      total: Dinheiro.deCentavos(centavos),
+      percentual: percentuais[i] ?? 0,
+    })),
     maiorGasto,
   };
 }
