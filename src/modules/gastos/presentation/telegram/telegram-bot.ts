@@ -8,17 +8,39 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { Bot } from 'grammy';
 import { RELOGIO, type Relogio } from '../../application/ports/relogio.js';
+import {
+  CadastrarCartaoUseCase,
+  ListarCartoesUseCase,
+  RemoverCartaoUseCase,
+} from '../../application/use-cases/cartoes.use-cases.js';
+import { ConcluirRegistroPendenteUseCase } from '../../application/use-cases/concluir-registro-pendente.use-case.js';
 import { DesfazerRegistroUseCase } from '../../application/use-cases/desfazer-registro.use-case.js';
-import { ExportarGastosUseCase } from '../../application/use-cases/exportar-gastos.use-case.js';
+import {
+  CancelarEdicaoUseCase,
+  ConfirmarEdicaoUseCase,
+  PrepararEdicaoUseCase,
+} from '../../application/use-cases/edicao.use-cases.js';
+import { ExportarPeriodoUseCase } from '../../application/use-cases/exportar-periodo.use-case.js';
+import {
+  ConsultarFaturaUseCase,
+  InformarFaturaUseCase,
+} from '../../application/use-cases/faturas.use-cases.js';
 import { ListarUltimosGastosUseCase } from '../../application/use-cases/listar-ultimos-gastos.use-case.js';
+import {
+  ListarParcelamentosUseCase,
+  RemoverParcelamentoUseCase,
+} from '../../application/use-cases/parcelamentos.use-cases.js';
 import { ProcessarMensagemUseCase } from '../../application/use-cases/processar-mensagem.use-case.js';
-import { ResumirGastosUseCase } from '../../application/use-cases/resumir-gastos.use-case.js';
+import { ResumirPeriodoUseCase } from '../../application/use-cases/resumir-periodo.use-case.js';
 import { MAX_BYTES_AUDIO } from '../limites.js';
 import { baixarArquivo, TIMEOUT_DOWNLOAD_MS } from './download.js';
 import { COMANDOS, TEXTO_AJUDA, TEXTO_START } from './formatador.js';
 import {
   tratarCallback,
+  tratarComandoCartoes,
   tratarComandoExportar,
+  tratarComandoFatura,
+  tratarComandoParcelamentos,
   tratarComandoResumo,
   tratarComandoUltimos,
   tratarNaoSuportado,
@@ -40,14 +62,36 @@ export class TelegramBot implements OnModuleInit, OnModuleDestroy {
     @Inject(ConfigService) private readonly config: ConfigService,
     @Inject(ProcessarMensagemUseCase)
     private readonly processar: ProcessarMensagemUseCase,
-    @Inject(ExportarGastosUseCase)
-    private readonly exportar: ExportarGastosUseCase,
-    @Inject(ResumirGastosUseCase)
-    private readonly resumir: ResumirGastosUseCase,
+    @Inject(ExportarPeriodoUseCase)
+    private readonly exportar: ExportarPeriodoUseCase,
+    @Inject(ResumirPeriodoUseCase)
+    private readonly resumir: ResumirPeriodoUseCase,
     @Inject(ListarUltimosGastosUseCase)
     private readonly listarUltimos: ListarUltimosGastosUseCase,
     @Inject(DesfazerRegistroUseCase)
     private readonly desfazer: DesfazerRegistroUseCase,
+    @Inject(ConcluirRegistroPendenteUseCase)
+    private readonly concluirRegistro: ConcluirRegistroPendenteUseCase,
+    @Inject(PrepararEdicaoUseCase)
+    private readonly prepararEdicao: PrepararEdicaoUseCase,
+    @Inject(ConfirmarEdicaoUseCase)
+    private readonly confirmarEdicao: ConfirmarEdicaoUseCase,
+    @Inject(CancelarEdicaoUseCase)
+    private readonly cancelarEdicao: CancelarEdicaoUseCase,
+    @Inject(CadastrarCartaoUseCase)
+    private readonly cadastrarCartao: CadastrarCartaoUseCase,
+    @Inject(ListarCartoesUseCase)
+    private readonly listarCartoes: ListarCartoesUseCase,
+    @Inject(RemoverCartaoUseCase)
+    private readonly removerCartao: RemoverCartaoUseCase,
+    @Inject(ConsultarFaturaUseCase)
+    private readonly consultarFatura: ConsultarFaturaUseCase,
+    @Inject(InformarFaturaUseCase)
+    private readonly informarFatura: InformarFaturaUseCase,
+    @Inject(ListarParcelamentosUseCase)
+    private readonly listarParcelamentos: ListarParcelamentosUseCase,
+    @Inject(RemoverParcelamentoUseCase)
+    private readonly removerParcelamento: RemoverParcelamentoUseCase,
     @Inject(RELOGIO) private readonly relogio: Relogio,
   ) {}
 
@@ -65,6 +109,17 @@ export class TelegramBot implements OnModuleInit, OnModuleDestroy {
       resumir: this.resumir,
       listarUltimos: this.listarUltimos,
       desfazer: this.desfazer,
+      concluirRegistro: this.concluirRegistro,
+      prepararEdicao: this.prepararEdicao,
+      confirmarEdicao: this.confirmarEdicao,
+      cancelarEdicao: this.cancelarEdicao,
+      cadastrarCartao: this.cadastrarCartao,
+      listarCartoes: this.listarCartoes,
+      removerCartao: this.removerCartao,
+      consultarFatura: this.consultarFatura,
+      informarFatura: this.informarFatura,
+      listarParcelamentos: this.listarParcelamentos,
+      removerParcelamento: this.removerParcelamento,
       logger: this.logger,
       relogio: this.relogio,
       // A URL carrega o token: existe só aqui e nunca é logada.
@@ -84,6 +139,11 @@ export class TelegramBot implements OnModuleInit, OnModuleDestroy {
     bot.command('exportar', (ctx) => tratarComandoExportar(ctx, deps));
     bot.command('resumo', (ctx) => tratarComandoResumo(ctx, deps));
     bot.command('ultimos', (ctx) => tratarComandoUltimos(ctx, deps));
+    bot.command('cartoes', (ctx) => tratarComandoCartoes(ctx, deps));
+    bot.command('fatura', (ctx) => tratarComandoFatura(ctx, deps));
+    bot.command('parcelamentos', (ctx) =>
+      tratarComandoParcelamentos(ctx, deps),
+    );
     bot.on('message:text', (ctx) => tratarTexto(ctx, deps));
     bot.on('message:voice', (ctx) => tratarVoz(ctx, deps));
     bot.on('callback_query:data', (ctx) => tratarCallback(ctx, deps));

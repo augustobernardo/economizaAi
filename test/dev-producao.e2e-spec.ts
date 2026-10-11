@@ -29,8 +29,17 @@ describe('/dev/* em produção (e2e)', () => {
         .get('/dev/exportar')
         .query({ inicio: '2026-01-01', fim: '2026-01-31', formato: 'csv' })
         .expect(404);
+      await request(app.getHttpServer())
+        .post('/dev/cartoes')
+        .send({ nome: 'Inter', diaFechamento: 3, diaVencimento: 10 })
+        .expect(404);
+      await request(app.getHttpServer())
+        .get('/dev/faturas')
+        .query({ cartao: 'inter', mes: '2026-11' })
+        .expect(404);
     } finally {
       await app.close();
     }
-  });
+    // Import frio do AppModule é lento no /mnt/c (WSL): 120 s só neste teste.
+  }, 120_000);
 });

@@ -31,4 +31,18 @@ export class GastoOrmEntity {
   /** Agrupa os gastos de uma mesma mensagem (usado pelo Desfazer). */
   @Column({ type: 'uuid', name: 'registro_id' })
   registroId!: string;
+
+  @Column({ type: 'uuid', name: 'cartao_id', nullable: true })
+  cartaoId!: string | null;
+
+  @Column({
+    type: 'varchar',
+    length: 7,
+    name: 'forma_pagamento',
+    nullable: true,
+  })
+  formaPagamento!: string | null;
+
+  @Column({ type: 'timestamptz', name: 'editado_em', nullable: true })
+  editadoEm!: Date | null;
 }

@@ -1,12 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { umGasto } from '../../../../test/builders/gasto.builder.js';
 import { Dinheiro } from './dinheiro.js';
-import { Gasto, TETO_VALOR_CENTAVOS } from './gasto.js';
+import { Gasto, TETO_VALOR_CENTAVOS, type FormaPagamento } from './gasto.js';
 import {
   DataForaDaJanelaError,
   DataFuturaError,
   DataInvalidaError,
   DescricaoVaziaError,
+  PagamentoInvalidoError,
   RegistroIdVazioError,
   ValorAcimaDoTetoError,
 } from './errors.js';
@@ -158,5 +159,144 @@ describe('registroId', () => {
     const original = umGasto().build();
     const restaurado = Gasto.restaurar({ ...original, valor: original.valor });
     expect(restaurado.registroId).toBe(original.registroId);
+  });
+});
+
+describe('Gasto com pagamento', () => {
+  it('guarda o pagamento no cartão', () => {
+    const id = crypto.randomUUID();
+    const g = umGasto().noCartao(id, 'credito').build();
+    expect(g.pagamento).toEqual({ cartaoId: id, forma: 'credito' });
+    expect(g.editadoEm).toBeNull();
+  });
+
+  it('sem cartão, pagamento é null', () => {
+    expect(umGasto().build().pagamento).toBeNull();
+  });
+
+  it('recusa cartaoId vazio ou só espaços', () => {
+    for (const id of ['', ' '])
+      expect(() => umGasto().noCartao(id, 'credito').build()).toThrow(
+        PagamentoInvalidoError,
+      );
+  });
+
+  it('recusa forma desconhecida', () => {
+    const forma = 'pix' as unknown as FormaPagamento;
+    expect(() =>
+      umGasto().noCartao(crypto.randomUUID(), forma).build(),
+    ).toThrow(PagamentoInvalidoError);
+  });
+
+  it('restaurar preserva pagamento e editadoEm; sem eles, null', () => {
+    const original = umGasto().build();
+    const pagamento = {
+      cartaoId: crypto.randomUUID(),
+      forma: 'debito' as const,
+    };
+    const editadoEm = new Date('2026-06-16T10:00:00Z');
+    const com = Gasto.restaurar({ ...original, pagamento, editadoEm });
+    expect(com.pagamento).toEqual(pagamento);
+    expect(com.editadoEm).toEqual(editadoEm);
+    const sem = Gasto.restaurar({
+      ...original,
+      pagamento: undefined,
+      editadoEm: undefined,
+    });
+    expect(sem.pagamento).toBeNull();
+    expect(sem.editadoEm).toBeNull();
+  });
+});
+
+describe('Gasto.editar', () => {
+  const depois = new Date('2026-06-20T12:00:00Z');
+
+  it('altera cada campo e preserva identidade e origem', () => {
+    const original = umGasto().build();
+    const novo = original.editar(
+      {
+        valor: Dinheiro.deReais(10),
+        descricao: '  Padaria ',
+        categoria: 'alimentacao',
+        dataGasto: '2026-06-18',
+        pagamento: { cartaoId: 'c1', forma: 'credito' },
+      },
+      depois,
+    );
+
+    expect(novo.valor.centavos).toBe(1000);
+    expect(novo.descricao).toBe('Padaria');
+    expect(novo.categoria).toBe('alimentacao');
+    expect(novo.dataGasto).toBe('2026-06-18');
+    expect(novo.pagamento).toEqual({ cartaoId: 'c1', forma: 'credito' });
+    expect(novo.editadoEm).toBe(depois);
+    expect(novo.id).toBe(original.id);
+    expect(novo.registroId).toBe(original.registroId);
+    expect(novo.origem).toBe(original.origem);
+    expect(novo.textoOriginal).toBe(original.textoOriginal);
+    expect(novo.criadoEm).toBe(original.criadoEm);
+  });
+
+  it('não muta o original', () => {
+    const original = umGasto().build();
+    const antes = original.descricao;
+    original.editar({ descricao: 'Outra' }, depois);
+
+    expect(original.descricao).toBe(antes);
+    expect(original.editadoEm).toBeNull();
+  });
+
+  it('pagamento undefined mantém e null remove o cartão', () => {
+    const pagamento = { cartaoId: 'c1', forma: 'debito' as FormaPagamento };
+    const original = umGasto().build().editar({ pagamento }, depois);
+
+    expect(original.editar({ descricao: 'x' }, depois).pagamento).toEqual(
+      pagamento,
+    );
+    expect(original.editar({ pagamento: null }, depois).pagamento).toBeNull();
+  });
+
+  it('revalida descrição, data, teto e pagamento', () => {
+    const g = umGasto().build();
+
+    expect(() => g.editar({ descricao: ' ' }, depois)).toThrow(
+      DescricaoVaziaError,
+    );
+    expect(() => g.editar({ dataGasto: '2026-13-40' }, depois)).toThrow(
+      DataInvalidaError,
+    );
+    expect(() => g.editar({ dataGasto: '2026-06-21' }, depois)).toThrow(
+      DataFuturaError,
+    );
+    expect(() => g.editar({ dataGasto: '2024-01-01' }, depois)).toThrow(
+      DataForaDaJanelaError,
+    );
+    expect(() =>
+      g.editar({ valor: Dinheiro.deReais(50_000.01) }, depois),
+    ).toThrow(ValorAcimaDoTetoError);
+    expect(() =>
+      g.editar({ pagamento: { cartaoId: ' ', forma: 'credito' } }, depois),
+    ).toThrow(PagamentoInvalidoError);
+  });
+
+  it('só valida a janela da data quando a data é alterada', () => {
+    const antigo = Gasto.restaurar({
+      id: 'x',
+      valor: Dinheiro.deReais(10),
+      categoria: 'outros',
+      descricao: 'antigo',
+      dataGasto: '2025-05-01',
+      origem: 'texto',
+      textoOriginal: 't',
+      criadoEm: new Date('2025-05-01T00:00:00Z'),
+      registroId: 'r',
+    });
+
+    expect(antigo.editar({ descricao: 'novo' }, depois).dataGasto).toBe(
+      '2025-05-01',
+    );
+    expect(() => antigo.editar({ dataGasto: '2025-05-02' }, depois)).toThrow(
+      DataForaDaJanelaError,
+    );
   });
 });

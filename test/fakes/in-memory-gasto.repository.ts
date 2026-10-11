@@ -1,29 +1,16 @@
 import type { Gasto } from '../../src/modules/gastos/domain/gasto.js';
 import type { GastoRepository } from '../../src/modules/gastos/domain/ports/gasto.repository.js';
+import { ColecaoEmMemoria } from './colecao-em-memoria.js';
 
-export class InMemoryGastoRepository implements GastoRepository {
-  private gastos: Gasto[] = [];
-
-  async salvarVarios(gastos: Gasto[]): Promise<void> {
-    this.gastos.push(...gastos);
-  }
-
-  async removerDoRegistro(
-    registroId: string,
-    criadoDesde: Date,
-  ): Promise<number> {
-    const antes = this.gastos.length;
-    this.gastos = this.gastos.filter(
-      (g) => !(g.registroId === registroId && g.criadoEm >= criadoDesde),
-    );
-    return antes - this.gastos.length;
-  }
-
+export class InMemoryGastoRepository
+  extends ColecaoEmMemoria<Gasto>
+  implements GastoRepository
+{
   async listarPorPeriodo(
     inicio: string,
     fimExclusivo: string,
   ): Promise<Gasto[]> {
-    return this.gastos
+    return this.itens
       .filter((g) => g.dataGasto >= inicio && g.dataGasto < fimExclusivo)
       .sort(
         (a, b) =>
@@ -33,7 +20,7 @@ export class InMemoryGastoRepository implements GastoRepository {
   }
 
   async listarUltimos(limite: number): Promise<Gasto[]> {
-    return [...this.gastos]
+    return [...this.itens]
       .sort(
         (x, y) =>
           y.criadoEm.getTime() - x.criadoEm.getTime() ||
@@ -42,7 +29,18 @@ export class InMemoryGastoRepository implements GastoRepository {
       .slice(0, limite);
   }
 
-  limpar(): void {
-    this.gastos = [];
+  async listarCreditoDoCartao(
+    cartaoId: string,
+    inicio: string,
+    fimExclusivo: string,
+  ): Promise<Gasto[]> {
+    return (await this.listarPorPeriodo(inicio, fimExclusivo)).filter(
+      (g) =>
+        g.pagamento?.cartaoId === cartaoId && g.pagamento.forma === 'credito',
+    );
+  }
+
+  usaCartao(cartaoId: string): boolean {
+    return this.itens.some((g) => g.pagamento?.cartaoId === cartaoId);
   }
 }

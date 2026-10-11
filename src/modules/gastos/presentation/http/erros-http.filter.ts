@@ -8,9 +8,16 @@ import {
 import type { Response } from 'express';
 import { DomainError } from '../../../../shared/domain/domain.error.js';
 import {
+  CartaoEmUsoError,
+  CartaoJaExisteError,
+  CartaoNaoCadastradoError,
+  CartaoNaoEncontradoError,
+  EscolhaDeCartaoNecessariaError,
+  NenhumCartaoCadastradoError,
   NenhumGastoEncontradoError,
   NenhumGastoNoPeriodoError,
   NenhumGastoRegistradoError,
+  ParcelamentoSemCreditoError,
   ProvedorIndisponivelError,
   RespostaInvalidaDaIaError,
 } from '../../application/errors.js';
@@ -31,6 +38,13 @@ const MENSAGEM_422 = 'Não foi possível registrar os gastos dessa mensagem.';
   NenhumGastoRegistradoError,
   RespostaInvalidaDaIaError,
   ProvedorIndisponivelError,
+  CartaoNaoCadastradoError,
+  CartaoNaoEncontradoError,
+  NenhumCartaoCadastradoError,
+  CartaoJaExisteError,
+  CartaoEmUsoError,
+  EscolhaDeCartaoNecessariaError,
+  ParcelamentoSemCreditoError,
 )
 export class ErrosHttpFilter implements ExceptionFilter<Error> {
   private readonly logger = new Logger(ErrosHttpFilter.name);
@@ -51,6 +65,25 @@ export class ErrosHttpFilter implements ExceptionFilter<Error> {
     }
     if (erro instanceof NenhumGastoRegistradoError) {
       return [404, 'Nenhum gasto registrado.'];
+    }
+    if (
+      erro instanceof CartaoNaoCadastradoError ||
+      erro instanceof CartaoNaoEncontradoError ||
+      erro instanceof NenhumCartaoCadastradoError
+    ) {
+      return [404, 'Cartão não cadastrado.'];
+    }
+    if (erro instanceof EscolhaDeCartaoNecessariaError) {
+      return [422, 'Informe o cartão.'];
+    }
+    if (erro instanceof ParcelamentoSemCreditoError) {
+      return [422, 'Parcelamento só no crédito.'];
+    }
+    if (
+      erro instanceof CartaoJaExisteError ||
+      erro instanceof CartaoEmUsoError
+    ) {
+      return [409, 'Conflito com um cartão existente.'];
     }
     if (
       erro instanceof PeriodoFuturoError ||

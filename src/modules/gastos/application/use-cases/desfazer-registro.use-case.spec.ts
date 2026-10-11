@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { umGasto } from '../../../../../test/builders/gasto.builder.js';
 import { InMemoryGastoRepository } from '../../../../../test/fakes/in-memory-gasto.repository.js';
+import { InMemoryCartaoRepository } from '../../../../../test/fakes/in-memory-cartao.repository.js';
+import { InMemoryEntradaRepository } from '../../../../../test/fakes/in-memory-entrada.repository.js';
+import { InMemoryParcelamentoRepository } from '../../../../../test/fakes/in-memory-parcelamento.repository.js';
+import { InMemoryRegistroRepository } from '../../../../../test/fakes/in-memory-registro.repository.js';
 import { RelogioFixo } from '../../../../../test/fakes/relogio-fixo.js';
 import {
   DesfazerRegistroUseCase,
@@ -13,6 +17,15 @@ function todos(repositorio: InMemoryGastoRepository) {
   return repositorio.listarPorPeriodo('0000-01-01', '9999-12-31');
 }
 
+function registroDe(repositorio: InMemoryGastoRepository) {
+  return new InMemoryRegistroRepository(
+    repositorio,
+    new InMemoryEntradaRepository(),
+    new InMemoryParcelamentoRepository(),
+    new InMemoryCartaoRepository(),
+  );
+}
+
 describe('DesfazerRegistroUseCase', () => {
   it('remove os gastos do registro e devolve a contagem', async () => {
     const repositorio = new InMemoryGastoRepository();
@@ -23,7 +36,7 @@ describe('DesfazerRegistroUseCase', () => {
     await repositorio.salvarVarios([a, b, outro]);
 
     const removidos = await new DesfazerRegistroUseCase(
-      repositorio,
+      registroDe(repositorio),
       new RelogioFixo(AGORA),
     ).executar(registro);
 
@@ -41,7 +54,7 @@ describe('DesfazerRegistroUseCase', () => {
     await repositorio.salvarVarios([antigo]);
 
     const removidos = await new DesfazerRegistroUseCase(
-      repositorio,
+      registroDe(repositorio),
       new RelogioFixo(AGORA),
     ).executar(registro);
 
@@ -60,7 +73,7 @@ describe('DesfazerRegistroUseCase', () => {
     ]);
 
     const removidos = await new DesfazerRegistroUseCase(
-      repositorio,
+      registroDe(repositorio),
       new RelogioFixo(AGORA),
     ).executar(registro);
 
@@ -69,7 +82,7 @@ describe('DesfazerRegistroUseCase', () => {
 
   it('registro inexistente devolve 0', async () => {
     const removidos = await new DesfazerRegistroUseCase(
-      new InMemoryGastoRepository(),
+      registroDe(new InMemoryGastoRepository()),
       new RelogioFixo(AGORA),
     ).executar(crypto.randomUUID());
 
