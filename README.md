@@ -50,7 +50,8 @@ documented security) matters as much as the features.
 - **Summary** by category and **latest expenses** (`/resumo`, `/ultimos`).
 - **Credit and debit cards** with closing and due days (`/cartoes`). A
   purchase lands on the invoice that matches its date; a card mentioned
-  without credit or debit gets a button question first.
+  without credit or debit gets a button question first. The due day must
+  fall 1 to 20 days after the closing day.
 - **Invoices:** total = initial amount you report + credit purchases +
   installments - refunds (`/fatura`).
 - **Installments**, including ones already under way ("parcela 8 de 10"),

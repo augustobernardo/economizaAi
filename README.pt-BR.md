@@ -44,7 +44,8 @@ segurança documentada) importa tanto quanto a funcionalidade.
 - **Resumo** por categoria e **últimos gastos** (`/resumo`, `/ultimos`).
 - **Cartões de crédito e débito** com dia de fechamento e de vencimento
   (`/cartoes`). A compra cai na fatura certa pela data; cartão citado sem
-  crédito ou débito gera uma pergunta com botões.
+  crédito ou débito gera uma pergunta com botões. O vencimento deve cair de
+  1 a 20 dias depois do fechamento.
 - **Faturas:** total = valor inicial informado + compras no crédito +
   parcelas - reembolsos (`/fatura`).
 - **Parcelamentos**, inclusive já em andamento ("parcela 8 de 10"), listados

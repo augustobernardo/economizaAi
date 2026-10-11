@@ -36,6 +36,9 @@ export class NomeDeCartaoInvalidoError extends DomainError {}
 /** Dia de fechamento/vencimento fora de 1..31. */
 export class DiaInvalidoError extends DomainError {}
 
+/** Fechamento e vencimento a 0 ou a mais de MAX_DIAS_ATE_VENCIMENTO dias um do outro. */
+export class IntervaloDeFaturaInvalidoError extends DomainError {}
+
 /** Quantidade de parcelas fora de 2..48. */
 export class QuantidadeDeParcelasInvalidaError extends DomainError {}
 

@@ -18,6 +18,8 @@ creates the `vX.Y.Z` tag, the GitHub Release and the `:vX.Y.Z` image.
 
 - Credit and debit cards with closing and due days (`/cartoes`, `/cartoes add`,
   `/cartoes remover`); expenses can be tied to a card and a payment method.
+  A new card's due day must fall 1 to 20 days after its closing day, which
+  catches swapped fields.
 - Invoices: total = reported initial amount + credit purchases + installments
   minus refunds (`/fatura`, `/fatura <card> <amount> [MM/YYYY]`).
 - Installments, including ones already under way, shown as "installment 8 of

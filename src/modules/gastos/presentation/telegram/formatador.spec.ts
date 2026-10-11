@@ -13,6 +13,7 @@ import {
   DataFuturaError,
   DataInvalidaError,
   DescricaoVaziaError,
+  IntervaloDeFaturaInvalidoError,
   PeriodoFuturoError,
   PeriodoInvertidoError,
   PeriodoLongoDemaisError,
@@ -249,6 +250,10 @@ describe('mensagemDeErro', () => {
     [
       new DownloadFalhouError(),
       '🎧 Não consegui baixar o áudio. Tente de novo.',
+    ],
+    [
+      new IntervaloDeFaturaInvalidoError('x'),
+      '📅 O vencimento precisa ser de 1 a 20 dias depois do fechamento. Confira a ordem: <code>/cartoes add &lt;nome&gt; &lt;fechamento&gt; &lt;vencimento&gt;</code>',
     ],
   ])('%o → mensagem amigável', (erro, esperado) => {
     expect(mensagemDeErro(erro)).toBe(esperado);
