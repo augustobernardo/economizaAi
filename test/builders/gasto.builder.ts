@@ -1,6 +1,10 @@
 import { Dinheiro } from '../../src/modules/gastos/domain/dinheiro.js';
 import type { Categoria } from '../../src/modules/gastos/domain/categoria.js';
-import type { OrigemGasto } from '../../src/modules/gastos/domain/gasto.js';
+import type {
+  FormaPagamento,
+  OrigemGasto,
+  Pagamento,
+} from '../../src/modules/gastos/domain/gasto.js';
 import { Gasto } from '../../src/modules/gastos/domain/gasto.js';
 
 /** Data de referência fixa, usada como "agora" padrão do builder. */
@@ -15,6 +19,7 @@ interface PropsBuilder {
   textoOriginal: string;
   agora: Date;
   registroId: string;
+  pagamento: Pagamento | null;
 }
 
 /** Builder fluente de `Gasto` com defaults válidos, para specs de domínio. */
@@ -28,6 +33,7 @@ export function umGasto() {
     textoOriginal: 'gastei 50 no mercado',
     agora: AGORA_PADRAO,
     registroId: crypto.randomUUID(),
+    pagamento: null,
   };
 
   return {
@@ -55,6 +61,10 @@ export function umGasto() {
       props.registroId = registroId;
       return this;
     },
+    noCartao(cartaoId: string, forma: FormaPagamento) {
+      props.pagamento = { cartaoId, forma };
+      return this;
+    },
     build(): Gasto {
       return Gasto.criar({
         valor: Dinheiro.deReais(props.valorReais),
@@ -65,6 +75,7 @@ export function umGasto() {
         textoOriginal: props.textoOriginal,
         agora: props.agora,
         registroId: props.registroId,
+        pagamento: props.pagamento,
       });
     },
   };

@@ -32,6 +32,8 @@ describe('/dev/exportar (e2e)', () => {
 
     resposta = {
       intencao: 'registrar',
+      entradas: [],
+      parcelamentos: [],
       textoOriginal: 'uber e mercado',
       gastos: [
         {
@@ -39,12 +41,16 @@ describe('/dev/exportar (e2e)', () => {
           categoria: 'transporte',
           descricao: 'Uber',
           dataGasto: hoje,
+          cartao: null,
+          formaPagamento: null,
         },
         {
           valorReais: 80,
           categoria: 'mercado',
           descricao: 'Mercado',
           dataGasto: hoje,
+          cartao: null,
+          formaPagamento: null,
         },
       ],
     };

@@ -49,4 +49,20 @@ export class TypeOrmGastoRepository implements GastoRepository {
     });
     return linhas.map(paraDominio);
   }
+
+  async listarCreditoDoCartao(
+    cartaoId: string,
+    inicio: string,
+    fimExclusivo: string,
+  ): Promise<Gasto[]> {
+    const linhas = await this.dataSource.getRepository(GastoOrmEntity).find({
+      where: {
+        cartaoId,
+        formaPagamento: 'credito',
+        dataGasto: And(MoreThanOrEqual(inicio), LessThan(fimExclusivo)),
+      },
+      order: { dataGasto: 'ASC', criadoEm: 'ASC' },
+    });
+    return linhas.map(paraDominio);
+  }
 }

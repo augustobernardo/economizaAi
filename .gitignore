@@ -43,6 +43,8 @@ temp/
 
 # Ferramentas locais do agente (não versionadas)
 .claude/skills/
+/.agents/
+/skills-lock.json
 .claude/worktrees/
 
 # Specs e planos dos agentes (só locais)

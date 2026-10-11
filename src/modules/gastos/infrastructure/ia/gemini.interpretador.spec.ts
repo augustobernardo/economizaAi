@@ -14,14 +14,18 @@ import {
 } from './gemini.interpretador.js';
 import {
   INSTRUCAO_AUDIO,
+  instrucaoDeCorrecao,
   instrucaoDeSistema,
   mensagemDoUsuario,
   VERSOES_PROMPT,
+  type VersaoPrompt,
 } from './prompt.js';
 import {
-  respostaInterpretacaoAudioJsonSchema,
+  respostaCorrecaoAudioJsonSchema,
+  respostaCorrecaoJsonSchema,
+  respostaInterpretacaoAudioJsonSchemaV6,
+  respostaInterpretacaoJsonSchemaV6,
   respostaInterpretacaoAudioJsonSchemaV5,
-  respostaInterpretacaoJsonSchema,
   respostaInterpretacaoJsonSchemaV5,
 } from './schema.js';
 
@@ -43,7 +47,11 @@ const resp = (campos: Record<string, unknown>) =>
     ...campos,
   });
 
-function criar(resposta: { text?: string } | Error) {
+/** Versão v5 por padrão: os testes legados usam o formato antigo (v1–v5). */
+function criar(
+  resposta: { text?: string } | Error,
+  versao: VersaoPrompt = 'v5',
+) {
   const generateContent = vi.fn(async () => {
     if (resposta instanceof Error) throw resposta;
     return resposta;
@@ -51,6 +59,7 @@ function criar(resposta: { text?: string } | Error) {
   const interpretador = new GeminiInterpretador(
     { generateContent } as unknown as ModelosGemini,
     'modelo-x',
+    versao,
   );
   return { interpretador, generateContent };
 }
@@ -73,14 +82,14 @@ describe('GeminiInterpretador', () => {
       model: 'modelo-x',
       contents: mensagemDoUsuario(TEXTO),
       config: {
-        systemInstruction: instrucaoDeSistema(DATA),
+        systemInstruction: instrucaoDeSistema(DATA, 'texto', 'v5'),
         temperature: 0,
         maxOutputTokens: MAX_TOKENS_SAIDA,
         responseMimeType: 'application/json',
         responseJsonSchema: respostaInterpretacaoJsonSchemaV5,
       },
     });
-    expect(MAX_TOKENS_SAIDA).toBe(2048);
+    expect(MAX_TOKENS_SAIDA).toBe(4096);
   });
 
   it('usa a versão de prompt informada no construtor', async () => {
@@ -137,7 +146,9 @@ describe('GeminiInterpretador', () => {
 
     expect(await interpretarTexto(interpretador)).toEqual({
       intencao: 'registrar',
-      gastos: [GASTO],
+      gastos: [{ ...GASTO, cartao: null, formaPagamento: null }],
+      entradas: [],
+      parcelamentos: [],
       textoOriginal: TEXTO,
     });
   });
@@ -292,7 +303,7 @@ describe('GeminiInterpretador', () => {
           },
         ],
         config: {
-          systemInstruction: instrucaoDeSistema(DATA, 'audio'),
+          systemInstruction: instrucaoDeSistema(DATA, 'audio', 'v5'),
           temperature: 0,
           maxOutputTokens: MAX_TOKENS_SAIDA,
           responseMimeType: 'application/json',
@@ -311,7 +322,9 @@ describe('GeminiInterpretador', () => {
 
       expect(await interpretarAudio(interpretador)).toEqual({
         intencao: 'registrar',
-        gastos: [GASTO],
+        gastos: [{ ...GASTO, cartao: null, formaPagamento: null }],
+        entradas: [],
+        parcelamentos: [],
         textoOriginal: 'ontem 32,50 de uber',
       });
     });
@@ -374,6 +387,340 @@ describe('GeminiInterpretador', () => {
           registroId: crypto.randomUUID(),
         }),
       ).toThrow(ValorAcimaDoTetoError);
+    });
+  });
+});
+
+describe('GeminiInterpretador v6', () => {
+  const CONTEXTO = { cartoes: ['Nubank', 'Itaú'] };
+  const v6 = (campos: Record<string, unknown> = {}) =>
+    JSON.stringify({
+      intencao: 'registrar',
+      gastos: [],
+      entradas: [],
+      parcelamentos: [],
+      inicio: null,
+      fim: null,
+      fatura: null,
+      ...campos,
+    });
+  const criarV6 = (text: string | Error) =>
+    criar(text instanceof Error ? text : { text }, 'v6');
+  const interpretar6 = (i: GeminiInterpretador) =>
+    i.interpretar({ tipo: 'texto', texto: TEXTO }, DATA, CONTEXTO);
+
+  const parcelamento = {
+    descricao: 'Celular',
+    categoria: 'outros',
+    cartao: 'Nubank',
+    totalReais: null,
+    valorParcelaReais: 150,
+    quantidade: 10,
+    parcelaAtual: 3,
+    dataCompra: '2026-10-05',
+  };
+
+  it('é a versão padrão e envia contexto.cartoes, schema v6 e maxOutputTokens', async () => {
+    const generateContent = vi.fn(async () => ({ text: v6() }));
+    const padrao = new GeminiInterpretador(
+      { generateContent } as unknown as ModelosGemini,
+      'modelo-x',
+    );
+    await interpretar6(padrao);
+    const { config } = (generateContent.mock.calls[0] as any)[0];
+    expect(config.systemInstruction).toBe(
+      instrucaoDeSistema(DATA, 'texto', 'v6', CONTEXTO),
+    );
+    expect(config.systemInstruction).toContain(
+      '<cartoes>\nNubank\nItaú\n</cartoes>',
+    );
+    expect(config.responseJsonSchema).toBe(respostaInterpretacaoJsonSchemaV6);
+    expect(config.maxOutputTokens).toBe(MAX_TOKENS_SAIDA);
+  });
+
+  it('registrar devolve gastos com cartão, entradas e parcelamentos', async () => {
+    const gasto = { ...GASTO, cartao: 'Nubank', formaPagamento: 'credito' };
+    const entrada = {
+      valorReais: 50,
+      categoria: 'reembolso',
+      descricao: 'Estorno',
+      dataEntrada: '2026-10-02',
+      cartao: 'Nubank',
+      mesFatura: '2026-10',
+    };
+    const { interpretador } = criarV6(
+      v6({
+        gastos: [gasto],
+        entradas: [entrada],
+        parcelamentos: [parcelamento],
+      }),
+    );
+    expect(await interpretar6(interpretador)).toEqual({
+      intencao: 'registrar',
+      gastos: [gasto],
+      entradas: [entrada],
+      parcelamentos: [parcelamento],
+      textoOriginal: TEXTO,
+    });
+  });
+
+  it('parcelaAtual > quantidade → RespostaInvalidaDaIaError', async () => {
+    const { interpretador } = criarV6(
+      v6({ parcelamentos: [{ ...parcelamento, parcelaAtual: 11 }] }),
+    );
+    await expect(interpretar6(interpretador)).rejects.toBeInstanceOf(
+      RespostaInvalidaDaIaError,
+    );
+  });
+
+  it('parcelamento sem total nem parcela → RespostaInvalidaDaIaError', async () => {
+    const { interpretador } = criarV6(
+      v6({ parcelamentos: [{ ...parcelamento, valorParcelaReais: null }] }),
+    );
+    await expect(interpretar6(interpretador)).rejects.toBeInstanceOf(
+      RespostaInvalidaDaIaError,
+    );
+  });
+
+  it('informarFatura mapeia cartão, mês e valor', async () => {
+    const { interpretador } = criarV6(
+      v6({
+        intencao: 'informarFatura',
+        fatura: { cartao: 'Nubank', mes: '2026-11', valorReais: 400 },
+      }),
+    );
+    expect(await interpretar6(interpretador)).toEqual({
+      intencao: 'informarFatura',
+      cartao: 'Nubank',
+      mes: '2026-11',
+      valorReais: 400,
+      textoOriginal: TEXTO,
+    });
+  });
+
+  it.each([
+    ['sem fatura', null],
+    ['valor nulo', { cartao: 'Nubank', mes: null, valorReais: null }],
+  ])('informarFatura %s → RespostaInvalidaDaIaError', async (_n, fatura) => {
+    const { interpretador } = criarV6(
+      v6({ intencao: 'informarFatura', fatura }),
+    );
+    await expect(interpretar6(interpretador)).rejects.toBeInstanceOf(
+      RespostaInvalidaDaIaError,
+    );
+  });
+
+  it('consultarFatura aceita fatura nula', async () => {
+    const { interpretador } = criarV6(v6({ intencao: 'consultarFatura' }));
+    expect(await interpretar6(interpretador)).toEqual({
+      intencao: 'consultarFatura',
+      cartao: null,
+      mes: null,
+      textoOriginal: TEXTO,
+    });
+  });
+
+  it('exportar continua exigindo período', async () => {
+    const { interpretador } = criarV6(v6({ intencao: 'exportar' }));
+    await expect(interpretar6(interpretador)).rejects.toBeInstanceOf(
+      RespostaInvalidaDaIaError,
+    );
+  });
+
+  it('áudio: usa schema de áudio v6 e a transcrição', async () => {
+    const { interpretador, generateContent } = criarV6(
+      v6({ transcricao: 'fatura do nubank', intencao: 'consultarFatura' }),
+    );
+    const r = await interpretador.interpretar(
+      { tipo: 'audio', audio: Buffer.from('a'), mimeType: 'audio/ogg' },
+      DATA,
+      CONTEXTO,
+    );
+    expect(r.textoOriginal).toBe('fatura do nubank');
+    expect(
+      (generateContent.mock.calls[0] as any)[0].config.responseJsonSchema,
+    ).toBe(respostaInterpretacaoAudioJsonSchemaV6);
+  });
+
+  describe('correção', () => {
+    const ITENS = [
+      {
+        tipo: 'gasto' as const,
+        indice: 1,
+        valorReais: 30,
+        categoria: 'transporte',
+        descricao: 'Uber',
+        data: '2026-10-04',
+        cartao: 'Nubank',
+        formaPagamento: 'credito' as const,
+      },
+      {
+        tipo: 'entrada' as const,
+        indice: 2,
+        valorReais: 100,
+        categoria: 'outros',
+        descricao: 'Pix',
+        data: '2026-10-03',
+      },
+      {
+        tipo: 'gasto' as const,
+        indice: 3,
+        valorReais: 10,
+        categoria: 'lazer',
+        descricao: 'Cinema',
+        data: '2026-10-02',
+        cartao: null,
+        formaPagamento: null,
+      },
+    ];
+    const alt = (campos: Record<string, unknown>) => ({
+      indice: 1,
+      valorReais: null,
+      categoria: null,
+      descricao: null,
+      data: null,
+      cartao: null,
+      formaPagamento: null,
+      removerCartao: false,
+      ...campos,
+    });
+    const corr = (campos: Record<string, unknown>) =>
+      JSON.stringify({
+        alteracoes: [],
+        remover: [],
+        acrescentar: [],
+        ...campos,
+      });
+    const corrigir = (i: GeminiInterpretador) =>
+      i.interpretarCorrecao(
+        { tipo: 'texto', texto: 'era 40' },
+        ITENS,
+        DATA,
+        CONTEXTO,
+      );
+
+    it('envia itens, cartões e schema de correção; omite campos null', async () => {
+      const { interpretador, generateContent } = criar(
+        { text: corr({ alteracoes: [alt({ valorReais: 40 })], remover: [2] }) },
+        'v6',
+      );
+      expect(await corrigir(interpretador)).toEqual({
+        alteracoes: [{ indice: 1, valorReais: 40 }],
+        remover: [2],
+        acrescentar: [],
+        textoOriginal: 'era 40',
+      });
+      expect(generateContent).toHaveBeenCalledWith({
+        model: 'modelo-x',
+        contents: mensagemDoUsuario('era 40'),
+        config: expect.objectContaining({
+          systemInstruction: instrucaoDeCorrecao(ITENS, DATA, CONTEXTO),
+          responseJsonSchema: respostaCorrecaoJsonSchema,
+          maxOutputTokens: MAX_TOKENS_SAIDA,
+        }),
+      });
+    });
+
+    it('removerCartao vira cartao e formaPagamento null; cartão novo vira string', async () => {
+      const { interpretador } = criar(
+        {
+          text: corr({
+            alteracoes: [
+              alt({ removerCartao: true }),
+              alt({ indice: 3, cartao: 'Itaú', formaPagamento: 'debito' }),
+            ],
+          }),
+        },
+        'v6',
+      );
+      const r = await corrigir(interpretador);
+      expect(r.alteracoes).toEqual([
+        { indice: 1, cartao: null, formaPagamento: null },
+        { indice: 3, cartao: 'Itaú', formaPagamento: 'debito' },
+      ]);
+    });
+
+    it.each([
+      ['alteração com índice 0', corr({ alteracoes: [alt({ indice: 0 })] })],
+      ['alteração com índice > n', corr({ alteracoes: [alt({ indice: 4 })] })],
+      ['remover índice > n', corr({ remover: [4] })],
+      [
+        'categoria de gasto em entrada',
+        corr({ alteracoes: [alt({ indice: 2, categoria: 'lazer' })] }),
+      ],
+      [
+        'removerCartao com cartão',
+        corr({ alteracoes: [alt({ removerCartao: true, cartao: 'X' })] }),
+      ],
+      ['campo extra', corr({ extra: 1 })],
+      [
+        'índice repetido em alteracoes',
+        corr({ alteracoes: [alt({ valorReais: 1 }), alt({ valorReais: 2 })] }),
+      ],
+      ['índice repetido em remover', corr({ remover: [2, 2] })],
+      [
+        'índice alterado e removido',
+        corr({ alteracoes: [alt({ valorReais: 1 })], remover: [1] }),
+      ],
+      [
+        'cartão em entrada',
+        corr({ alteracoes: [alt({ indice: 2, cartao: 'Nubank' })] }),
+      ],
+      [
+        'removerCartao em entrada',
+        corr({ alteracoes: [alt({ indice: 2, removerCartao: true })] }),
+      ],
+    ])('%s → RespostaInvalidaDaIaError', async (_n, text) => {
+      const { interpretador } = criar({ text }, 'v6');
+      await expect(corrigir(interpretador)).rejects.toBeInstanceOf(
+        RespostaInvalidaDaIaError,
+      );
+    });
+
+    it('acrescentar devolve gastos extraídos', async () => {
+      const novo = { ...GASTO, cartao: null, formaPagamento: null };
+      const { interpretador } = criar(
+        { text: corr({ acrescentar: [novo] }) },
+        'v6',
+      );
+      expect((await corrigir(interpretador)).acrescentar).toEqual([novo]);
+    });
+
+    it('áudio: transcrição vira textoOriginal e usa schema de áudio', async () => {
+      const { interpretador, generateContent } = criar(
+        { text: corr({ transcricao: 'era quarenta' }) },
+        'v6',
+      );
+      const r = await interpretador.interpretarCorrecao(
+        { tipo: 'audio', audio: Buffer.from('a'), mimeType: 'audio/ogg' },
+        ITENS,
+        DATA,
+        CONTEXTO,
+      );
+      expect(r.textoOriginal).toBe('era quarenta');
+      expect(
+        (generateContent.mock.calls[0] as any)[0].config.responseJsonSchema,
+      ).toBe(respostaCorrecaoAudioJsonSchema);
+    });
+
+    it('áudio com MIME não suportado não chama o SDK', async () => {
+      const { interpretador, generateContent } = criar({ text: '{}' }, 'v6');
+      await expect(
+        interpretador.interpretarCorrecao(
+          { tipo: 'audio', audio: Buffer.from('a'), mimeType: 'audio/mpeg' },
+          ITENS,
+          DATA,
+          CONTEXTO,
+        ),
+      ).rejects.toThrow(/formato de áudio/i);
+      expect(generateContent).not.toHaveBeenCalled();
+    });
+
+    it('erro transitório → ProvedorIndisponivelError', async () => {
+      const { interpretador } = criar(apiError(503), 'v6');
+      await expect(corrigir(interpretador)).rejects.toBeInstanceOf(
+        ProvedorIndisponivelError,
+      );
     });
   });
 });

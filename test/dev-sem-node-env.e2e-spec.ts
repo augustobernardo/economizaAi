@@ -13,5 +13,6 @@ describe('/dev/* sem NODE_ENV', () => {
     const { GastosModule } =
       await import('../src/modules/gastos/gastos.module.js');
     expect(Reflect.getMetadata('controllers', GastosModule)).toEqual([]);
-  });
+    // Import frio do módulo é lento no /mnt/c (WSL): 120 s só neste arquivo.
+  }, 120_000);
 });

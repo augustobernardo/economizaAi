@@ -14,6 +14,37 @@ creates the `vX.Y.Z` tag, the GitHub Release and the `:vX.Y.Z` image.
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-11
+
+### Added
+
+- Credit and debit cards with closing and due days (`/cartoes`, `/cartoes add`,
+  `/cartoes remover`); expenses can be tied to a card and a payment method.
+  A new card's due day must fall 1 to 20 days after its closing day, which
+  catches swapped fields.
+- Invoices: total = reported initial amount + credit purchases + installments
+  minus refunds (`/fatura`, `/fatura <card> <amount> [MM/YYYY]`).
+- Installments, including ones already under way, shown as "installment 8 of
+  10" (`/parcelamentos`).
+- Income and monthly balance in the summary.
+- Refunds that reduce a card invoice.
+- Editing a record by replying to its message.
+- Gemini extraction prompt v6 (cards, income, installments and invoices).
+
+### Changed
+
+- **BREAKING:** CSV export format. New columns
+  `tipo;data;descricao;categoria;valor;origem;cartao;forma` and signed
+  `valor` (income positive, expenses and installments negative). Update any
+  script that reads the old CSV.
+- Gemini prompt v6 is now the default.
+- Gemini maximum output tokens raised to 4096.
+
+### Database
+
+- Four new migrations: cards plus payment columns on expenses, invoices,
+  installments and incomes.
+
 ## [0.1.0] - 2026-10-06
 
 ### Added
@@ -55,5 +86,6 @@ creates the `vX.Y.Z` tag, the GitHub Release and the `:vX.Y.Z` image.
   Unicode characters cannot close the user-message block.
 - The release image is scanned for embedded secrets before it is published.
 
-[Unreleased]: https://github.com/augustobernardo/economizaAi/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/augustobernardo/economizaAi/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/augustobernardo/economizaAi/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/augustobernardo/economizaAi/releases/tag/v0.1.0

@@ -1,25 +1,20 @@
 import type { Categoria } from './categoria.js';
-import {
-  ehDataCivilValida,
-  hojeEmSaoPaulo,
-  subtrairAnos,
-} from './data-civil.js';
 import type { Dinheiro } from './dinheiro.js';
-import {
-  DataForaDaJanelaError,
-  DataFuturaError,
-  DataInvalidaError,
-  DescricaoVaziaError,
-  RegistroIdVazioError,
-  ValorAcimaDoTetoError,
-} from './errors.js';
+import { PagamentoInvalidoError } from './errors.js';
+import { validarCamposComuns, validarRegistroId } from './invariantes.js';
 
-/** Teto de segurança por gasto: R$ 50.000,00. Ver SECURITY.md §3.3/§4 (Etapa 2). */
-export const TETO_VALOR_CENTAVOS = 5_000_000;
-
-const JANELA_DIAS_PASSADO_EM_ANOS = 1;
+export { TETO_VALOR_CENTAVOS } from './invariantes.js';
 
 export type OrigemGasto = 'texto' | 'audio';
+
+export const FORMAS_PAGAMENTO = ['credito', 'debito'] as const;
+export type FormaPagamento = (typeof FORMAS_PAGAMENTO)[number];
+
+/** Cartão e forma com que o gasto foi pago. */
+export interface Pagamento {
+  cartaoId: string;
+  forma: FormaPagamento;
+}
 
 export interface PropsCriarGasto {
   valor: Dinheiro;
@@ -33,6 +28,7 @@ export interface PropsCriarGasto {
   agora: Date;
   /** Id do registro (mensagem) que criou o gasto; agrupa o Desfazer. */
   registroId: string;
+  pagamento?: Pagamento | null;
 }
 
 export interface PropsRestaurarGasto {
@@ -45,46 +41,30 @@ export interface PropsRestaurarGasto {
   textoOriginal: string;
   criadoEm: Date;
   registroId: string;
+  pagamento?: Pagamento | null;
+  editadoEm?: Date | null;
 }
 
-/** Valida o formato `YYYY-MM-DD` e que a data representa um dia real do calendário. */
-function validarFormatoData(dataGasto: string): void {
-  if (!ehDataCivilValida(dataGasto)) {
-    throw new DataInvalidaError(`Data inválida: "${dataGasto}"`);
+/** `cartaoId` não vazio e `forma` dentro de `FORMAS_PAGAMENTO`. */
+function validarPagamento(pagamento: Pagamento | null | undefined): void {
+  if (!pagamento) return;
+  if (pagamento.cartaoId.trim() === '') {
+    throw new PagamentoInvalidoError('cartaoId vazio');
   }
-}
-
-/** `dataGasto` não pode ser futura nem anterior à janela de 1 ano, ambas em America/Sao_Paulo. */
-function validarJanelaData(dataGasto: string, agora: Date): void {
-  const hoje = hojeEmSaoPaulo(agora);
-  if (dataGasto > hoje) {
-    throw new DataFuturaError(
-      `Data do gasto "${dataGasto}" é posterior a hoje ("${hoje}")`,
-    );
-  }
-
-  const limiteInferior = subtrairAnos(hoje, JANELA_DIAS_PASSADO_EM_ANOS);
-  if (dataGasto < limiteInferior) {
-    throw new DataForaDaJanelaError(
-      `Data do gasto "${dataGasto}" é anterior à janela permitida ("${limiteInferior}")`,
+  if (!FORMAS_PAGAMENTO.includes(pagamento.forma)) {
+    throw new PagamentoInvalidoError(
+      `Forma de pagamento inválida: "${pagamento.forma}"`,
     );
   }
 }
 
-function validarDescricao(descricao: string): string {
-  const descricaoTrimada = descricao.trim();
-  if (descricaoTrimada === '') {
-    throw new DescricaoVaziaError('Descrição vazia ou só com espaços');
-  }
-  return descricaoTrimada;
-}
-
-function validarTeto(valor: Dinheiro): void {
-  if (valor.centavos > TETO_VALOR_CENTAVOS) {
-    throw new ValorAcimaDoTetoError(
-      `Valor ${valor.centavos} centavos acima do teto de ${TETO_VALOR_CENTAVOS}`,
-    );
-  }
+export interface AlteracoesGasto {
+  valor?: Dinheiro;
+  descricao?: string;
+  categoria?: Categoria;
+  dataGasto?: string;
+  /** `undefined` mantém; `null` remove o cartão. */
+  pagamento?: Pagamento | null;
 }
 
 /** Entidade principal do domínio: um gasto registrado pelo dono. */
@@ -99,17 +79,21 @@ export class Gasto {
     public readonly textoOriginal: string,
     public readonly criadoEm: Date,
     public readonly registroId: string,
+    public readonly pagamento: Pagamento | null,
+    public readonly editadoEm: Date | null,
   ) {}
 
   /** Cria um novo gasto, validando todas as invariantes de domínio. */
   static criar(props: PropsCriarGasto): Gasto {
-    const descricao = validarDescricao(props.descricao);
-    validarFormatoData(props.dataGasto);
-    validarJanelaData(props.dataGasto, props.agora);
-    validarTeto(props.valor);
-    if (props.registroId.trim() === '') {
-      throw new RegistroIdVazioError('registroId vazio');
-    }
+    const descricao = validarCamposComuns({
+      descricao: props.descricao,
+      data: props.dataGasto,
+      valor: props.valor,
+      agora: props.agora,
+      validarData: true,
+    });
+    validarPagamento(props.pagamento);
+    validarRegistroId(props.registroId);
 
     return new Gasto(
       crypto.randomUUID(),
@@ -121,6 +105,40 @@ export class Gasto {
       props.textoOriginal,
       props.agora,
       props.registroId,
+      props.pagamento ?? null,
+      null,
+    );
+  }
+
+  /** Devolve uma cópia editada (mesma identidade), revalidando as invariantes contra `agora`. */
+  editar(alteracoes: AlteracoesGasto, agora: Date): Gasto {
+    const valor = alteracoes.valor ?? this.valor;
+    const dataGasto = alteracoes.dataGasto ?? this.dataGasto;
+    const pagamento =
+      alteracoes.pagamento === undefined
+        ? this.pagamento
+        : alteracoes.pagamento;
+    const descricao = validarCamposComuns({
+      descricao: alteracoes.descricao ?? this.descricao,
+      data: dataGasto,
+      valor,
+      agora,
+      validarData: alteracoes.dataGasto !== undefined,
+    });
+    validarPagamento(pagamento);
+
+    return new Gasto(
+      this.id,
+      valor,
+      alteracoes.categoria ?? this.categoria,
+      descricao,
+      dataGasto,
+      this.origem,
+      this.textoOriginal,
+      this.criadoEm,
+      this.registroId,
+      pagamento,
+      agora,
     );
   }
 
@@ -142,6 +160,8 @@ export class Gasto {
       props.textoOriginal,
       props.criadoEm,
       props.registroId,
+      props.pagamento ?? null,
+      props.editadoEm ?? null,
     );
   }
 }
