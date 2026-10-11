@@ -1,8 +1,14 @@
 import { somarDias } from './data-civil.js';
-import { DiaInvalidoError, NomeDeCartaoInvalidoError } from './errors.js';
+import {
+  DiaInvalidoError,
+  IntervaloDeFaturaInvalidoError,
+  NomeDeCartaoInvalidoError,
+} from './errors.js';
 import { diaNoMes, mesDe, somarMeses } from './mes.js';
 
 export const MAX_NOME_CARTAO = 30;
+export const MAX_DIAS_ATE_VENCIMENTO = 20;
+const DIAS_DO_CICLO = 30;
 const DIA_MINIMO = 1;
 const DIA_MAXIMO = 31;
 const SEM_CONTROLE = /^[^\p{Cc}\p{Cf}]*$/u;
@@ -19,6 +25,17 @@ export function normalizarNomeCartao(nome: string): string {
 function validarDia(dia: number, qual: string): void {
   if (!Number.isInteger(dia) || dia < DIA_MINIMO || dia > DIA_MAXIMO)
     throw new DiaInvalidoError(`Dia de ${qual} inválido: ${dia}`);
+}
+
+function validarIntervalo(fechamento: number, vencimento: number): void {
+  const dias =
+    vencimento > fechamento
+      ? vencimento - fechamento
+      : vencimento + DIAS_DO_CICLO - fechamento;
+  if (dias === 0 || dias > MAX_DIAS_ATE_VENCIMENTO)
+    throw new IntervaloDeFaturaInvalidoError(
+      `Vencimento deve ser até ${MAX_DIAS_ATE_VENCIMENTO} dias após o fechamento`,
+    );
 }
 
 export interface PropsRestaurarCartao {
@@ -56,6 +73,7 @@ export class Cartao {
       throw new NomeDeCartaoInvalidoError('Nome de cartão inválido');
     validarDia(p.diaFechamento, 'fechamento');
     validarDia(p.diaVencimento, 'vencimento');
+    validarIntervalo(p.diaFechamento, p.diaVencimento);
     return new Cartao(
       crypto.randomUUID(),
       nome,

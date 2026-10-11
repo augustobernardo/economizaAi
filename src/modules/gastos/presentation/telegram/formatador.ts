@@ -27,7 +27,7 @@ import type {
   AvisoRegistro,
 } from '../../application/use-cases/registrar-lancamentos.use-case.js';
 import type { ResultadoProcessamento } from '../../application/use-cases/processar-mensagem.use-case.js';
-import type { Cartao } from '../../domain/cartao.js';
+import { MAX_DIAS_ATE_VENCIMENTO, type Cartao } from '../../domain/cartao.js';
 import { ROTULOS_CATEGORIA, type Categoria } from '../../domain/categoria.js';
 import { ROTULOS_CATEGORIA_ENTRADA } from '../../domain/categoria-entrada.js';
 import { somarDias } from '../../domain/data-civil.js';
@@ -39,6 +39,7 @@ import {
   DataInvalidaError,
   DescricaoVaziaError,
   DiaInvalidoError,
+  IntervaloDeFaturaInvalidoError,
   MesInvalidoError,
   NomeDeCartaoInvalidoError,
   ParcelaInicialInvalidaError,
@@ -758,6 +759,10 @@ const MENSAGENS: [new (...args: never[]) => Error, Html][] = [
   [
     DiaInvalidoError,
     html`📅 Os dias de fechamento e vencimento vão de 1 a 31.`,
+  ],
+  [
+    IntervaloDeFaturaInvalidoError,
+    html`📅 O vencimento precisa ser de 1 a ${MAX_DIAS_ATE_VENCIMENTO} dias depois do fechamento. Confira a ordem: <code>/cartoes add &lt;nome&gt; &lt;fechamento&gt; &lt;vencimento&gt;</code>`,
   ],
   [
     QuantidadeDeParcelasInvalidaError,

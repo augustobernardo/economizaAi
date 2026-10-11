@@ -1,12 +1,25 @@
 import { describe, expect, it } from 'vitest';
 import { Cartao, normalizarNomeCartao } from './cartao.js';
 import { somarDias } from './data-civil.js';
-import { DiaInvalidoError, NomeDeCartaoInvalidoError } from './errors.js';
+import {
+  DiaInvalidoError,
+  IntervaloDeFaturaInvalidoError,
+  NomeDeCartaoInvalidoError,
+} from './errors.js';
 import { somarMeses } from './mes.js';
 
 const agora = new Date('2026-10-10T12:00:00Z');
 const cartao = (f: number, v: number, nome = 'Inter') =>
   Cartao.criar({ nome, diaFechamento: f, diaVencimento: v, agora });
+// Cartões antigos já salvos podem violar a regra de intervalo (só `criar` valida).
+const legado = (f: number, v: number) =>
+  Cartao.restaurar({
+    id: 'legado',
+    nome: 'Inter',
+    diaFechamento: f,
+    diaVencimento: v,
+    criadoEm: agora,
+  });
 
 describe('Cartao', () => {
   it('normaliza nome sem acento, caixa e espaços duplicados', () => {
@@ -26,6 +39,37 @@ describe('Cartao', () => {
     expect(() => cartao(0, 10)).toThrow(DiaInvalidoError);
     expect(() => cartao(3, 32)).toThrow(DiaInvalidoError);
     expect(() => cartao(3.5, 10)).toThrow(DiaInvalidoError);
+  });
+  describe('intervalo entre fechamento e vencimento', () => {
+    it.each([
+      [10, 10],
+      [10, 5],
+      [25, 16],
+      [10, 31],
+      [31, 31],
+    ])('recusa fecha %i vence %i', (f, v) =>
+      expect(() => cartao(f, v)).toThrow(IntervaloDeFaturaInvalidoError),
+    );
+    it.each([
+      [22, 1],
+      [31, 10],
+      [25, 15],
+      [30, 31],
+    ])('aceita fecha %i vence %i', (f, v) =>
+      expect(cartao(f, v).diaVencimento).toBe(v),
+    );
+    it('dia fora de 1..31 continua DiaInvalidoError', () =>
+      expect(() => cartao(0, 10)).toThrow(DiaInvalidoError));
+    it('restaurar não revalida', () =>
+      expect(
+        Cartao.restaurar({
+          id: 'x',
+          nome: 'Inter',
+          diaFechamento: 10,
+          diaVencimento: 5,
+          criadoEm: agora,
+        }).diaVencimento,
+      ).toBe(5));
   });
 
   describe('mesDaFatura (fecha 3, vence 10)', () => {
@@ -48,7 +92,7 @@ describe('Cartao', () => {
     expect(c.mesDaFatura('2026-03-01')).toBe('2026-04');
   });
   it('fecha e vence no mesmo dia vai para o mês seguinte', () => {
-    expect(cartao(10, 10).mesDaFatura('2026-10-05')).toBe('2026-11');
+    expect(legado(10, 10).mesDaFatura('2026-10-05')).toBe('2026-11');
   });
   it('vencimentoDe ajusta ao último dia', () => {
     expect(cartao(25, 31).vencimentoDe('2027-02')).toBe('2027-02-28');
@@ -90,7 +134,7 @@ describe('Cartao', () => {
     it.each(pares)(
       'partição sem buraco nem sobreposição (fecha %i vence %i)',
       (f, v) => {
-        const c = cartao(f, v);
+        const c = legado(f, v);
         for (let m = '2026-01'; m <= '2027-12'; m = somarMeses(m, 1)) {
           const { inicio, fimExclusivo } = c.cicloDaFatura(m);
           expect(inicio < fimExclusivo).toBe(true);
