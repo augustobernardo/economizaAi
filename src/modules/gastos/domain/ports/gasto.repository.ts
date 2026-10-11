@@ -8,6 +8,12 @@ export interface GastoRepository {
   listarPorPeriodo(inicio: string, fimExclusivo: string): Promise<Gasto[]>;
   /** Devolve os `limite` gastos mais recentes por `criadoEm` desc, desempate por `id` desc. */
   listarUltimos(limite: number): Promise<Gasto[]>;
+  /** Compras no crédito do cartão; mesmo intervalo de `listarPorPeriodo`. */
+  listarCreditoDoCartao(
+    cartaoId: string,
+    inicio: string,
+    fimExclusivo: string,
+  ): Promise<Gasto[]>;
 }
 
 export const GASTO_REPOSITORY = Symbol('GASTO_REPOSITORY');

@@ -1,6 +1,10 @@
 import { defineConfig } from 'vitest/config';
 import tsconfigPaths from 'vite-tsconfig-paths';
 import { URL_BANCO_DE_TESTE } from './test/setup/url-banco-de-teste.js';
+import { exigirBancoDeTeste } from './test/setup/exigir-banco-de-teste.js';
+
+const DATABASE_URL = process.env.DATABASE_URL ?? URL_BANCO_DE_TESTE;
+exigirBancoDeTeste(DATABASE_URL);
 
 export default defineConfig({
   plugins: [tsconfigPaths()],
@@ -11,7 +15,7 @@ export default defineConfig({
     globalSetup: ['test/setup/migrar-banco-de-teste.ts'],
     fileParallelism: false,
     env: {
-      DATABASE_URL: process.env.DATABASE_URL ?? URL_BANCO_DE_TESTE,
+      DATABASE_URL,
     },
   },
 });

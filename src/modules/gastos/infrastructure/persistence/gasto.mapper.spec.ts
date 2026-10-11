@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { umGasto } from '../../../../../test/builders/gasto.builder.js';
+import { Gasto } from '../../domain/gasto.js';
 import { paraDominio, paraPersistencia } from './gasto.mapper.js';
 
 describe('gasto.mapper', () => {
@@ -20,5 +21,24 @@ describe('gasto.mapper', () => {
   it('gera valorCentavos inteiro', () => {
     const linha = paraPersistencia(umGasto().comValor(50).build());
     expect(linha.valorCentavos).toBe(5000);
+  });
+
+  it('preserva pagamento e editadoEm', () => {
+    const base = umGasto().noCartao(crypto.randomUUID(), 'credito').build();
+    const gasto = Gasto.restaurar({
+      ...base,
+      editadoEm: new Date('2026-06-16T08:00:00Z'),
+    });
+    const linha = paraPersistencia(gasto);
+    expect(linha.cartaoId).toBe(base.pagamento?.cartaoId);
+    expect(linha.formaPagamento).toBe('credito');
+    expect(paraDominio(linha)).toEqual(gasto);
+  });
+
+  it('sem pagamento grava nulos', () => {
+    const linha = paraPersistencia(umGasto().build());
+    expect(linha.cartaoId).toBeNull();
+    expect(linha.formaPagamento).toBeNull();
+    expect(linha.editadoEm).toBeNull();
   });
 });

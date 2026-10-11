@@ -32,7 +32,7 @@ const SINONIMOS: Record<string, Categoria> = {
   supermercado: 'mercado',
 };
 
-function normalizarTexto(texto: string): string {
+export function normalizarTexto(texto: string): string {
   return texto.trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
 }
 

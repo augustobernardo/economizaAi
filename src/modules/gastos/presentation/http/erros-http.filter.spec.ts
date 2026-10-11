@@ -1,6 +1,12 @@
 import type { ArgumentsHost } from '@nestjs/common';
 import {
+  CartaoEmUsoError,
+  CartaoJaExisteError,
+  CartaoNaoCadastradoError,
+  EscolhaDeCartaoNecessariaError,
+  NenhumCartaoCadastradoError,
   NenhumGastoEncontradoError,
+  ParcelamentoSemCreditoError,
   NenhumGastoNoPeriodoError,
   NenhumGastoRegistradoError,
   ProvedorIndisponivelError,
@@ -33,6 +39,12 @@ describe('ErrosHttpFilter', () => {
     [new ProvedorIndisponivelError('segredo'), 503],
     [new PeriodoFuturoError('segredo'), 400],
     [new NenhumGastoRegistradoError('segredo'), 404],
+    [new CartaoNaoCadastradoError('segredo'), 404],
+    [new NenhumCartaoCadastradoError('segredo'), 404],
+    [new CartaoJaExisteError('segredo'), 409],
+    [new CartaoEmUsoError('segredo'), 409],
+    [new EscolhaDeCartaoNecessariaError(['segredo']), 422],
+    [new ParcelamentoSemCreditoError('segredo'), 422],
   ])('mapeia %s para %i sem vazar a mensagem original', (erro, codigo) => {
     const { status, corpo } = executar(erro);
     expect(status).toBe(codigo);

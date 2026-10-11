@@ -29,3 +29,30 @@ export class PeriodoFuturoError extends DomainError {}
 
 /** Período maior que `MAX_DIAS_PERIODO` dias. */
 export class PeriodoLongoDemaisError extends DomainError {}
+
+/** Nome de cartão vazio, longo (> 30) ou com caractere de controle/bidi. */
+export class NomeDeCartaoInvalidoError extends DomainError {}
+
+/** Dia de fechamento/vencimento fora de 1..31. */
+export class DiaInvalidoError extends DomainError {}
+
+/** Quantidade de parcelas fora de 2..48. */
+export class QuantidadeDeParcelasInvalidaError extends DomainError {}
+
+/** Parcela inicial fora de 1..quantidade. */
+export class ParcelaInicialInvalidaError extends DomainError {}
+
+/** Parcelamento sem total nem valor de parcela. */
+export class ValorDoParcelamentoAusenteError extends DomainError {}
+
+/** Valor inicial de fatura negativo, fracionado ou acima do teto. */
+export class ValorInicialInvalidoError extends DomainError {}
+
+/** Mês fora do formato `AAAA-MM` (01–12). */
+export class MesInvalidoError extends DomainError {}
+
+/** Vínculo de fatura em entrada que não é reembolso, ou com mês/cartão inválido. */
+export class VinculoDeFaturaInvalidoError extends DomainError {}
+
+/** Pagamento com `cartaoId` vazio ou forma fora de `FORMAS_PAGAMENTO`. */
+export class PagamentoInvalidoError extends DomainError {}

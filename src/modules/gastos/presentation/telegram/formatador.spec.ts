@@ -19,15 +19,48 @@ import {
   ValorAcimaDoTetoError,
   ValorInvalidoError,
 } from '../../domain/errors.js';
+import type { Gasto } from '../../domain/gasto.js';
 import { Periodo } from '../../domain/periodo.js';
-import { resumir } from '../../domain/resumo.js';
+import {
+  dadosComGastos,
+  dadosDoPeriodo,
+} from '../../../../../test/builders/dados-do-periodo.builder.js';
+import { umaEntrada } from '../../../../../test/builders/entrada.builder.js';
+import { umParcelamento } from '../../../../../test/builders/parcelamento.builder.js';
+import { Cartao } from '../../domain/cartao.js';
+import { Dinheiro } from '../../domain/dinheiro.js';
+import { comporFatura, FaturaInformada } from '../../domain/fatura.js';
+import * as erros from '../../application/errors.js';
 import { BYTES_POR_MB, MAX_BYTES_AUDIO } from '../limites.js';
 import { DownloadFalhouError } from './download.js';
 import {
   COMANDOS,
+  comDesfecho,
   comTranscricao,
+  formatarCartaoCadastrado,
+  formatarCartaoRemovido,
+  formatarDesfechoDaEdicao,
+  formatarEdicao,
+  POPUP_OPCAO_INVALIDA,
+  POPUP_PARCELAMENTO_INEXISTENTE,
+  POPUP_PENDENCIA_EXPIRADA,
+  formatarFaturas,
+  formatarPedidoDeRemocao,
+  MENSAGEM_EDICAO_APLICADA,
+  MENSAGEM_EDICAO_CANCELADA,
+  MENSAGEM_PARCELAMENTO_MANTIDO,
+  MENSAGEM_PARCELAMENTO_REMOVIDO,
+  MENSAGEM_PENDENCIA_EXPIRADA,
+  MENSAGEM_USO_CARTOES,
+  MENSAGEM_USO_FATURA,
   dataRelativa,
   formatarDesfeito,
+  barraDeProgresso,
+  formatarCartoes,
+  formatarEscolha,
+  formatarFatura,
+  formatarFaturaInformada,
+  formatarParcelamentos,
   formatarRegistro,
   formatarResumo,
   formatarSemGastoNoAudio,
@@ -48,6 +81,13 @@ import {
 import { html } from './html.js';
 
 const HOJE = '2026-10-05';
+const reg = (gastos: Gasto[]) => ({
+  gastos,
+  entradas: [],
+  parcelamentos: [],
+  cartoes: new Map<string, Cartao>(),
+  avisos: [],
+});
 const g = (
   valor: number,
   categoria: Categoria,
@@ -76,7 +116,7 @@ describe('dataRelativa', () => {
 describe('formatarRegistro', () => {
   it('um gasto: linhas separadas', () => {
     expect(
-      formatarRegistro([g(50, 'mercado', 'Compras da semana')], HOJE),
+      formatarRegistro(reg([g(50, 'mercado', 'Compras da semana')]), HOJE),
     ).toBe(
       [
         '✅ <b>Gasto registrado!</b>',
@@ -91,10 +131,10 @@ describe('formatarRegistro', () => {
   it('vários gastos: linha recuada e total', () => {
     expect(
       formatarRegistro(
-        [
+        reg([
           g(32.5, 'transporte', 'Uber', '2026-10-04'),
           g(18, 'alimentacao', 'Açaí', '2026-10-04'),
-        ],
+        ]),
         HOJE,
       ),
     ).toBe(
@@ -113,13 +153,16 @@ describe('formatarRegistro', () => {
   it('total com milhar', () => {
     expect(
       formatarRegistro(
-        [g(1000, 'moradia', 'Aluguel'), g(234.56, 'mercado', 'Feira')],
+        reg([g(1000, 'moradia', 'Aluguel'), g(234.56, 'mercado', 'Feira')]),
         HOJE,
       ),
     ).toContain('💵 <b>Total: R$ 1.234,56</b>');
   });
   it('descrição com <b> e & sai escapada', () => {
-    const saida = formatarRegistro([g(10, 'outros', '<b>x</b> & y')], HOJE);
+    const saida = formatarRegistro(
+      reg([g(10, 'outros', '<b>x</b> & y')]),
+      HOJE,
+    );
     expect(saida).toContain('📝 &lt;b&gt;x&lt;/b&gt; &amp; y');
   });
 });
@@ -143,21 +186,6 @@ describe('áudio', () => {
   it('transcrição longa é cortada em 500 caracteres antes do escape', () => {
     const saida = comTranscricao('&'.repeat(2000), html`X`);
     expect(saida).toContain(`"${'&amp;'.repeat(499)}…"`);
-  });
-});
-
-describe('formatarResumo', () => {
-  it('layout do mês', () => {
-    const periodo = Periodo.criar('2026-10-01', '2026-10-31', '2026-10-31');
-    const gastos = [
-      g(520, 'mercado', 'Feira', '2026-10-03'),
-      g(310, 'alimentacao', 'Almoço', '2026-10-02'),
-    ];
-    const saida = formatarResumo(periodo, resumir(gastos));
-    expect(saida.split('\n')[0]).toBe('📊 <b>Resumo de outubro/2026</b>');
-    expect(saida).toContain('💵 Total: R$ 830,00 · 2 registros');
-    expect(saida).toContain('🛒 Mercado: R$ 520,00 (');
-    expect(saida).toContain('🏆 Maior gasto: R$ 520,00 · Mercado · 03/10');
   });
 });
 
@@ -200,6 +228,9 @@ describe('mensagens avulsas', () => {
       'resumo',
       'ultimos',
       'exportar',
+      'cartoes',
+      'fatura',
+      'parcelamentos',
     ]);
   });
 });
@@ -265,11 +296,17 @@ describe('todas as mensagens', () => {
   const saidas: Record<string, string> = {
     start: TEXTO_START,
     ajuda: TEXTO_AJUDA,
-    registro: formatarRegistro([g(10, 'lazer', 'Cinema')], HOJE),
-    varios: formatarRegistro([g(10, 'lazer', 'a'), g(5, 'saude', 'b')], HOJE),
+    registro: formatarRegistro(reg([g(10, 'lazer', 'Cinema')]), HOJE),
+    varios: formatarRegistro(
+      reg([g(10, 'lazer', 'a'), g(5, 'saude', 'b')]),
+      HOJE,
+    ),
     audio: comTranscricao('oi', html`x`),
     semGastoAudio: formatarSemGastoNoAudio('oi'),
-    resumo: formatarResumo(PERIODO, resumir([g(10, 'lazer', 'a')])),
+    resumo: formatarResumo(
+      PERIODO,
+      dadosComGastos([g(10, 'lazer', 'a')], PERIODO).resumo,
+    ),
     ultimos: formatarUltimos([g(10, 'lazer', 'a')], HOJE),
     legenda: legendaExportacao(PERIODO, 3),
     desfeito: formatarDesfeito('x'),
@@ -314,5 +351,505 @@ describe('todas as mensagens', () => {
   it('nenhuma mensagem de erro expõe nome de provedor', () => {
     for (const e of ERROS_CONHECIDOS)
       expect(mensagemDeErro(e)).not.toMatch(/gemini|groq/i);
+  });
+});
+
+const AGORA = new Date('2026-10-05T15:00:00Z');
+const INTER = Cartao.criar({
+  nome: 'Inter',
+  diaFechamento: 3,
+  diaVencimento: 10,
+  agora: AGORA,
+});
+const CARTOES = new Map([[INTER.id, INTER]]);
+const OUTUBRO = Periodo.criar('2026-10-01', '2026-10-31', '2026-10-31');
+
+describe('formatarRegistro com cartões, entradas e parcelamentos', () => {
+  const vazio = { ...reg([]), cartoes: CARTOES };
+  it('gasto no crédito mostra cartão e fatura', () => {
+    const gasto = umGasto()
+      .em(AGORA)
+      .comValor(30)
+      .comCategoria('mercado')
+      .comDescricao('Mercado')
+      .comData('2026-10-05')
+      .noCartao(INTER.id, 'credito')
+      .build();
+    expect(formatarRegistro({ ...vazio, gastos: [gasto] }, HOJE)).toContain(
+      '💳 Inter · crédito · fatura nov/2026',
+    );
+  });
+  it('entrada única', () => {
+    const e = umaEntrada()
+      .comValor(4200)
+      .comCategoria('salario')
+      .comDescricao('Salário')
+      .comData('2026-10-05')
+      .build();
+    expect(formatarRegistro({ ...vazio, entradas: [e] }, HOJE)).toBe(
+      [
+        '✅ <b>Entrada registrada!</b>',
+        '',
+        '💰 Salário',
+        '💵 R$ 4.200,00',
+        '📝 Salário',
+        '📅 Hoje, 05/10',
+      ].join('\n'),
+    );
+  });
+  it('parcelamento novo e em andamento', () => {
+    const novo = umParcelamento().noCartao(INTER.id).build();
+    expect(formatarRegistro({ ...vazio, parcelamentos: [novo] }, HOJE)).toBe(
+      [
+        '✅ <b>Parcelamento registrado!</b>',
+        '',
+        '🧾 <b>Monitor</b>: R$ 1.000,00 em 10× de R$ 100,00',
+        '     Inter crédito · 1ª parcela na fatura de nov/2026, última em ago/2027',
+      ].join('\n'),
+    );
+    const andamento = umParcelamento()
+      .noCartao(INTER.id)
+      .aPartirDa(3, '2026-10', '2026-11')
+      .build();
+    expect(
+      formatarRegistro({ ...vazio, parcelamentos: [andamento] }, HOJE),
+    ).toContain('parcela 3 de 10 na fatura de nov/2026, última em jun/2027');
+  });
+  it('lote misto com totais e aviso', () => {
+    const gasto = g(30, 'mercado', 'Feira');
+    const e = umaEntrada().comValor(100).build();
+    const saida = formatarRegistro(
+      {
+        ...vazio,
+        gastos: [gasto],
+        entradas: [e],
+        avisos: ['reembolso-sem-cartao'],
+      },
+      HOJE,
+    );
+    expect(saida).toContain('✅ <b>2 lançamentos registrados!</b>');
+    expect(saida).toContain('💵 <b>Gastos: R$ 30,00</b>');
+    expect(saida).toContain('💰 <b>Entradas: R$ 100,00</b>');
+    expect(saida).toContain(
+      'ℹ️ Cadastre seus cartões com /cartoes para abater reembolsos na fatura.',
+    );
+  });
+  it('nome de cartão e descrição saem escapados', () => {
+    const c = Cartao.restaurar({
+      id: INTER.id,
+      nome: '<b>x</b>',
+      diaFechamento: 3,
+      diaVencimento: 10,
+      criadoEm: AGORA,
+    });
+    const p = umParcelamento().noCartao(c.id).build();
+    const saida = formatarRegistro(
+      { ...vazio, cartoes: new Map([[c.id, c]]), parcelamentos: [p] },
+      HOJE,
+    );
+    expect(saida).toContain('&lt;b&gt;x&lt;/b&gt; crédito');
+    expect(saida).not.toContain('<b>x</b>');
+  });
+});
+
+describe('formatarEscolha', () => {
+  it('pergunta por forma e por cartão', () => {
+    expect(formatarEscolha({ tipo: 'forma', indiceGasto: 0 })).toBe(
+      '💳 Foi no crédito ou no débito?',
+    );
+    expect(formatarEscolha({ tipo: 'cartao', alvo: 'gasto', indice: 0 })).toBe(
+      '💳 Em qual cartão?',
+    );
+  });
+});
+
+describe('fatura', () => {
+  const composicao = comporFatura({
+    cartaoId: INTER.id,
+    mes: '2026-11',
+    vencimento: '2026-11-10',
+    inicialCentavos: 40_000,
+    comprasCredito: [
+      umGasto().em(AGORA).comValor(30).noCartao(INTER.id, 'credito').build(),
+    ],
+    parcelas: [
+      {
+        descricao: 'Monitor',
+        numero: 1,
+        quantidade: 10,
+        valor: umParcelamento().build().valorParcela,
+      },
+    ],
+    reembolsos: [],
+  });
+  it('composição completa', () => {
+    expect(formatarFatura(INTER, composicao)).toBe(
+      [
+        '💳 <b>Fatura Inter nov/2026</b> · vence 10/11/2026',
+        '',
+        'Valor inicial: R$ 400,00',
+        'Compras (1): R$ 30,00',
+        'Parcelas (1): R$ 100,00',
+        '• Monitor · 1 de 10 · R$ 100,00',
+        'Reembolsos: R$ 0,00',
+        '<b>Total: R$ 530,00</b>',
+      ].join('\n'),
+    );
+  });
+  it('informada, com e sem valor anterior', () => {
+    const nova = FaturaInformada.criar({
+      cartaoId: INTER.id,
+      mes: '2026-11',
+      valorInicialCentavos: 40_000,
+      agora: AGORA,
+    });
+    const antiga = FaturaInformada.criar({
+      cartaoId: INTER.id,
+      mes: '2026-11',
+      valorInicialCentavos: 30_000,
+      agora: AGORA,
+    });
+    expect(formatarFaturaInformada(INTER, nova, null, composicao)).toBe(
+      '💳 <b>Fatura Inter nov/2026</b>: valor inicial R$ 400,00\nTotal atual: R$ 530,00 · vence 10/11/2026',
+    );
+    expect(formatarFaturaInformada(INTER, nova, antiga, composicao)).toContain(
+      'valor inicial R$ 300,00 → R$ 400,00',
+    );
+  });
+});
+
+describe('formatarResumo', () => {
+  it('entradas, gastos, saldo, parcelas e faturas', () => {
+    const dados = dadosDoPeriodo({
+      periodo: OUTUBRO,
+      gastos: [g(520, 'mercado', 'Feira', '2026-10-03')],
+      entradas: [umaEntrada().comValor(4200).comCategoria('salario').build()],
+      parcelamentos: [
+        umParcelamento().noCartao(INTER.id).comDescricao('Monitor').build(),
+      ],
+      cartoes: [INTER],
+      faturas: [
+        {
+          cartaoNome: 'Inter',
+          composicao: comporFatura({
+            cartaoId: INTER.id,
+            mes: '2026-10',
+            vencimento: '2026-10-10',
+            inicialCentavos: 21_000,
+            comprasCredito: [],
+            parcelas: [],
+            reembolsos: [],
+          }),
+        },
+      ],
+    });
+    const saida = formatarResumo(OUTUBRO, dados.resumo);
+    expect(saida).toContain('💰 Entradas: R$ 4.200,00 (1)');
+    expect(saida).toContain('💸 Gastos: R$ 620,00 (2)');
+    expect(saida).toContain('⚖️ Saldo: R$ 3.580,00');
+    expect(saida).toContain('<b>Por categoria (compras)</b>');
+    expect(saida).toContain('🧾 <b>Parcelamentos (1 · R$ 100,00)</b>');
+    expect(saida).toContain(
+      '📦 Monitor · 1 de 10 · R$ 100,00 · termina jul/2027',
+    );
+    expect(saida).toContain('Inter out/2026 (vence 10/10): R$ 210,00');
+  });
+  it('saldo negativo usa o sinal de menos antes do R$', () => {
+    const dados = dadosDoPeriodo({
+      periodo: OUTUBRO,
+      gastos: [g(100, 'mercado', 'Feira', '2026-10-03')],
+    });
+    expect(formatarResumo(OUTUBRO, dados.resumo)).toContain(
+      '⚖️ Saldo: −R$ 100,00',
+    );
+  });
+});
+
+describe('formatarParcelamentos e barra', () => {
+  it('barra com 10 e com 24 parcelas', () => {
+    expect(barraDeProgresso(8, 10)).toBe('▰▰▰▰▰▰▰▰▱▱');
+    expect(barraDeProgresso(12, 24)).toBe('▰▰▰▰▰▱▱▱▱▱');
+    expect(barraDeProgresso(1, 24)).toBe('▰▱▱▱▱▱▱▱▱▱');
+    expect(barraDeProgresso(0, 24)).toBe('▱▱▱▱▱▱▱▱▱▱');
+  });
+  it('lista e vazio', () => {
+    const p = umParcelamento().noCartao(INTER.id).build();
+    const saida = formatarParcelamentos([
+      {
+        parcelamento: p,
+        cartao: INTER,
+        atual: p.parcelaNoMes('2026-10'),
+        restantes: 9,
+      },
+    ]);
+    expect(saida).toContain('▰▱▱▱▱▱▱▱▱▱ 1 de 10 · faltam 9');
+    expect(saida).toContain('R$ 100,00 por mês · termina jul/2027');
+    expect(formatarParcelamentos([])).toContain('Nenhum parcelamento');
+  });
+});
+
+describe('formatarCartoes', () => {
+  it('lista e ajuda de cadastro', () => {
+    expect(formatarCartoes([INTER])).toContain(
+      '• <b>Inter</b> · fecha dia 3 · vence dia 10',
+    );
+    expect(formatarCartoes([])).toContain('/cartoes add &lt;nome&gt;');
+  });
+});
+
+describe('novos erros', () => {
+  it('cartão não cadastrado escapa o nome', () => {
+    expect(mensagemDeErro(new erros.CartaoNaoCadastradoError('<b>x</b>'))).toBe(
+      '💳 O cartão <b>&lt;b&gt;x&lt;/b&gt;</b> não está cadastrado. Use <code>/cartoes add &lt;b&gt;x&lt;/b&gt; &lt;fechamento&gt; &lt;vencimento&gt;</code>',
+    );
+  });
+  it('opções de cartão escapadas', () => {
+    expect(
+      mensagemDeErro(new erros.EscolhaDeCartaoNecessariaError(['A&B', 'C'])),
+    ).toBe('💳 Qual cartão? Você tem: <b>A&amp;B, C</b>.');
+  });
+  it('registro só com parcelamento', () => {
+    expect(mensagemDeErro(new erros.RegistroNaoEncontradoError(true))).toBe(
+      '🧾 Parcelamentos se corrigem por /parcelamentos.',
+    );
+  });
+  it.each([
+    new erros.NenhumCartaoCadastradoError('x'),
+    new erros.CartaoJaExisteError('x'),
+    new erros.CartaoEmUsoError('x'),
+    new erros.PendenciaExpiradaError('x'),
+    new erros.CorrecaoVaziaError('x'),
+    new erros.RegistroVazioError('x'),
+    new erros.IndiceDeCorrecaoInvalidoError('x'),
+    new erros.ParcelamentoSemCreditoError('x'),
+    new erros.RegistroNaoEncontradoError(),
+  ])('%s tem mensagem própria', (e) => {
+    expect(mensagemDeErro(e)).not.toBe(mensagemDeErro(new Error('x')));
+  });
+});
+
+describe('revisão da Task 15', () => {
+  it('nome de cartão com " · " não deforma o bloco do lote', () => {
+    const c = Cartao.restaurar({
+      id: INTER.id,
+      nome: 'A · B',
+      diaFechamento: 3,
+      diaVencimento: 10,
+      criadoEm: AGORA,
+    });
+    const gasto = umGasto()
+      .em(AGORA)
+      .comData('2026-10-05')
+      .noCartao(c.id, 'credito')
+      .build();
+    const saida = formatarRegistro(
+      {
+        ...reg([gasto, g(5, 'saude', 'b')]),
+        cartoes: new Map([[c.id, c]]),
+      },
+      HOJE,
+    );
+    expect(saida).toContain(' · A · B crédito · fatura nov/2026');
+  });
+  it('barra com 12 e 13 parcelas e quitada com 24', () => {
+    expect(barraDeProgresso(3, 12)).toBe('▰▰▰▱▱▱▱▱▱▱▱▱');
+    expect(barraDeProgresso(13, 13)).toBe('▰'.repeat(10));
+    expect(barraDeProgresso(1, 13)).toBe('▰▱▱▱▱▱▱▱▱▱');
+    expect(barraDeProgresso(24, 24)).toBe('▰'.repeat(10));
+  });
+  it('fatura com reembolso e com crédito a favor', () => {
+    const base = {
+      cartaoId: INTER.id,
+      mes: '2026-11',
+      vencimento: '2026-11-10',
+      comprasCredito: [],
+      parcelas: [],
+    };
+    const comReembolso = formatarFatura(
+      INTER,
+      comporFatura({
+        ...base,
+        inicialCentavos: 10_000,
+        reembolsos: [Dinheiro.deReais(30)],
+      }),
+    );
+    expect(comReembolso).toContain('Reembolsos: −R$ 30,00');
+    expect(comReembolso).toContain('<b>Total: R$ 70,00</b>');
+    expect(comReembolso).not.toContain('Crédito a favor');
+    const comCredito = formatarFatura(
+      INTER,
+      comporFatura({
+        ...base,
+        inicialCentavos: 0,
+        reembolsos: [Dinheiro.deReais(30)],
+      }),
+    );
+    expect(comCredito).toContain('Crédito a favor: R$ 30,00');
+    expect(comCredito).toContain('<b>Total: R$ 0,00</b>');
+  });
+  it('cartão desconhecido vira "cartão"', () => {
+    const e = umaEntrada()
+      .comCategoria('reembolso')
+      .vinculadaA({ cartaoId: crypto.randomUUID(), mesFatura: '2026-11' })
+      .build();
+    expect(
+      formatarRegistro({ ...reg([g(5, 'saude', 'b')]), entradas: [e] }, HOJE),
+    ).toContain('abate fatura cartão nov/2026');
+  });
+});
+
+describe('formatarEdicao', () => {
+  const REG = crypto.randomUUID();
+  const uber = umGasto()
+    .em(AGORA)
+    .comValor(32.5)
+    .comCategoria('transporte')
+    .comDescricao('Uber')
+    .comData('2026-10-04')
+    .build();
+  const acai = umGasto()
+    .em(AGORA)
+    .comValor(18)
+    .comCategoria('alimentacao')
+    .comDescricao('Açaí')
+    .comData('2026-10-01')
+    .build();
+  const novo = umGasto()
+    .em(AGORA)
+    .comValor(10)
+    .comCategoria('transporte')
+    .comDescricao('<i>Estacionamento</i>')
+    .comData(HOJE)
+    .noCartao(INTER.id, 'debito')
+    .build();
+  const uber35 = uber.editar({ valor: Dinheiro.deReais(35) }, AGORA);
+
+  it('antes e depois, removidos e acrescentados', () => {
+    const saida = formatarEdicao(
+      {
+        registroId: REG,
+        antes: [uber, acai],
+        depois: [uber35],
+        removidos: [acai],
+        acrescentados: [novo],
+        cartoes: CARTOES,
+      },
+      HOJE,
+    );
+    expect(saida).toBe(
+      [
+        '✏️ <b>Correção do registro</b>',
+        '',
+        '🔄 🚗 R$ 32,50 · Uber · Ontem, 04/10',
+        '     ➡️ 🚗 R$ 35,00 · Uber · Ontem, 04/10',
+        '➖ 🍔 R$ 18,00 · Açaí · 01/10',
+        '➕ 🚗 R$ 10,00 · &lt;i&gt;Estacionamento&lt;/i&gt; · Hoje, 05/10 · Inter débito',
+        '',
+        'Confirma?',
+      ].join('\n'),
+    );
+    expect(saida).not.toMatch(/[—–]/);
+  });
+
+  it('itens intactos não aparecem; entrada usa 💰', () => {
+    const salario = umaEntrada()
+      .comValor(4200)
+      .comCategoria('salario')
+      .comDescricao('Salário')
+      .build();
+    const salario2 = salario.editar({ valor: Dinheiro.deReais(4300) }, AGORA);
+    const saida = formatarEdicao(
+      {
+        registroId: REG,
+        antes: [uber, salario],
+        depois: [uber, salario2],
+        removidos: [],
+        acrescentados: [],
+        cartoes: new Map(),
+      },
+      HOJE,
+    );
+    expect(saida).not.toContain('Uber');
+    expect(saida).toContain('🔄 💰 R$ 4.200,00 · Salário · Hoje, 05/10');
+    expect(saida).toContain('➡️ 💰 R$ 4.300,00 · Salário · Hoje, 05/10');
+  });
+});
+
+describe('mensagens dos comandos e callbacks novos', () => {
+  const p = umParcelamento()
+    .noCartao(INTER.id)
+    .comDescricao('<b>TV</b>')
+    .build();
+  const saidas = {
+    cadastrado: formatarCartaoCadastrado(INTER),
+    removido: formatarCartaoRemovido(INTER),
+    usoCartoes: MENSAGEM_USO_CARTOES,
+    usoFatura: MENSAGEM_USO_FATURA,
+    pedirRemocao: formatarPedidoDeRemocao(p),
+    parcelamentoRemovido: MENSAGEM_PARCELAMENTO_REMOVIDO,
+    parcelamentoMantido: MENSAGEM_PARCELAMENTO_MANTIDO,
+    concluido: comDesfecho('<b>x</b>', MENSAGEM_EDICAO_APLICADA),
+    expirada: MENSAGEM_PENDENCIA_EXPIRADA,
+    aplicada: MENSAGEM_EDICAO_APLICADA,
+    cancelada: MENSAGEM_EDICAO_CANCELADA,
+  };
+  it.each(Object.entries(saidas))(
+    '%s tem emoji e não usa travessão',
+    (_, h) => {
+      expect(h).toMatch(/\p{Extended_Pictographic}/u);
+      expect(h).not.toMatch(/[—–]/);
+    },
+  );
+  it('cartão cadastrado e removido', () => {
+    expect(formatarCartaoCadastrado(INTER)).toBe(
+      '💳 Cartão <b>Inter</b> cadastrado: fecha dia 3, vence dia 10.',
+    );
+    expect(formatarCartaoRemovido(INTER)).toBe(
+      '🗑️ Cartão <b>Inter</b> removido.',
+    );
+  });
+  it('pedido de remoção escapa a descrição', () => {
+    expect(formatarPedidoDeRemocao(p)).toContain('&lt;b&gt;TV&lt;/b&gt;');
+  });
+  it('desfecho escapa o texto original e anexa o resultado', () => {
+    expect(comDesfecho(' <b>x</b> ', MENSAGEM_EDICAO_CANCELADA)).toBe(
+      '&lt;b&gt;x&lt;/b&gt;\n\n🚫 Correção cancelada.',
+    );
+    expect(comDesfecho('', MENSAGEM_EDICAO_CANCELADA)).toBe(
+      '🚫 Correção cancelada.',
+    );
+  });
+  it('desfecho da edição tira a pergunta "Confirma?"', () => {
+    expect(
+      formatarDesfechoDaEdicao('a\nb\n\nConfirma?', MENSAGEM_EDICAO_APLICADA),
+    ).toBe(comDesfecho('a\nb', MENSAGEM_EDICAO_APLICADA));
+    expect(formatarDesfechoDaEdicao('a', MENSAGEM_EDICAO_APLICADA)).toBe(
+      comDesfecho('a', MENSAGEM_EDICAO_APLICADA),
+    );
+  });
+  it('popups são texto puro', () => {
+    for (const p of [
+      POPUP_PENDENCIA_EXPIRADA,
+      POPUP_OPCAO_INVALIDA,
+      POPUP_PARCELAMENTO_INEXISTENTE,
+    ])
+      expect(p).not.toMatch(/[<>&—–]/);
+  });
+  it('faturas de vários cartões separadas por linha em branco', () => {
+    const c = comporFatura({
+      cartaoId: INTER.id,
+      mes: '2026-11',
+      vencimento: '2026-11-10',
+      inicialCentavos: 0,
+      comprasCredito: [],
+      parcelas: [],
+      reembolsos: [],
+    });
+    expect(
+      formatarFaturas([
+        { cartao: INTER, composicao: c },
+        { cartao: INTER, composicao: c },
+      ]),
+    ).toBe(`${formatarFatura(INTER, c)}\n\n${formatarFatura(INTER, c)}`);
   });
 });

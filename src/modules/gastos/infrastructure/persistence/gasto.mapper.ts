@@ -1,6 +1,6 @@
 import type { Categoria } from '../../domain/categoria.js';
 import { Dinheiro } from '../../domain/dinheiro.js';
-import type { OrigemGasto } from '../../domain/gasto.js';
+import type { FormaPagamento, OrigemGasto } from '../../domain/gasto.js';
 import { Gasto } from '../../domain/gasto.js';
 import { GastoOrmEntity } from './gasto.orm-entity.js';
 
@@ -16,6 +16,15 @@ export function paraDominio(linha: GastoOrmEntity): Gasto {
     textoOriginal: linha.textoOriginal,
     criadoEm: linha.criadoEm,
     registroId: linha.registroId,
+    // O CHECK `ck_gastos_pagamento_junto` garante os dois campos juntos.
+    pagamento:
+      linha.cartaoId === null
+        ? null
+        : {
+            cartaoId: linha.cartaoId,
+            forma: linha.formaPagamento as FormaPagamento,
+          },
+    editadoEm: linha.editadoEm,
   });
 }
 
@@ -30,5 +39,8 @@ export function paraPersistencia(gasto: Gasto): GastoOrmEntity {
   linha.textoOriginal = gasto.textoOriginal;
   linha.criadoEm = gasto.criadoEm;
   linha.registroId = gasto.registroId;
+  linha.cartaoId = gasto.pagamento?.cartaoId ?? null;
+  linha.formaPagamento = gasto.pagamento?.forma ?? null;
+  linha.editadoEm = gasto.editadoEm;
   return linha;
 }

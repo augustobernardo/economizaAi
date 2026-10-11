@@ -5,7 +5,9 @@ import {
 } from '../../src/modules/gastos/infrastructure/ia/prompt.js';
 import {
   respostaInterpretacaoAudioJsonSchemaV5,
+  respostaInterpretacaoAudioJsonSchemaV6,
   respostaInterpretacaoJsonSchemaV5,
+  respostaInterpretacaoJsonSchemaV6,
 } from '../../src/modules/gastos/infrastructure/ia/schema.js';
 import { carregarCasos, compararCaso, placar, type Caso } from './avaliacao.js';
 
@@ -42,6 +44,8 @@ function textosEnviadosAoModelo(): string[] {
     ]),
     JSON.stringify(respostaInterpretacaoJsonSchemaV5),
     JSON.stringify(respostaInterpretacaoAudioJsonSchemaV5),
+    JSON.stringify(respostaInterpretacaoJsonSchemaV6),
+    JSON.stringify(respostaInterpretacaoAudioJsonSchemaV6),
   ];
 }
 
@@ -64,12 +68,16 @@ describe('compararCaso', () => {
           categoria: 'transporte',
           descricao: 'Ônibus',
           dataGasto: '2026-10-04',
+          cartao: null,
+          formaPagamento: null,
         },
         {
           valorReais: 16,
           categoria: 'alimentacao',
           descricao: '2 cafés',
           dataGasto: '2026-10-05',
+          cartao: null,
+          formaPagamento: null,
         },
       ],
     });
@@ -97,6 +105,8 @@ describe('compararCaso', () => {
             categoria: 'alimentacao',
             descricao: 'café',
             dataGasto: '2026-10-05',
+            cartao: null,
+            formaPagamento: null,
           },
         ],
       },
@@ -136,18 +146,24 @@ describe('pareamento', () => {
           categoria: 'mercado',
           descricao: 'feira',
           dataGasto: '2026-10-05',
+          cartao: null,
+          formaPagamento: null,
         },
         {
           valorReais: 21,
           categoria: 'lazer',
           descricao: 'cinema',
           dataGasto: '2026-10-05',
+          cartao: null,
+          formaPagamento: null,
         },
         {
           valorReais: 30,
           categoria: 'saude',
           descricao: 'remédio',
           dataGasto: '2026-10-05',
+          cartao: null,
+          formaPagamento: null,
         },
       ],
     });

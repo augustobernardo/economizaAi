@@ -1,6 +1,10 @@
 import { defineConfig } from 'vitest/config';
 import tsconfigPaths from 'vite-tsconfig-paths';
 import { URL_BANCO_DE_TESTE } from './test/setup/url-banco-de-teste.js';
+import { exigirBancoDeTeste } from './test/setup/exigir-banco-de-teste.js';
+
+const DATABASE_URL = process.env.DATABASE_URL ?? URL_BANCO_DE_TESTE;
+exigirBancoDeTeste(DATABASE_URL);
 
 export default defineConfig({
   plugins: [tsconfigPaths()],
@@ -21,7 +25,7 @@ export default defineConfig({
     // Valores óbviamente falsos; nunca aponta para serviços reais.
     env: {
       NODE_ENV: 'test',
-      DATABASE_URL: process.env.DATABASE_URL ?? URL_BANCO_DE_TESTE,
+      DATABASE_URL,
       TELEGRAM_BOT_TOKEN: 'token-fake-e2e',
       TELEGRAM_OWNER_ID: '1',
       GEMINI_API_KEY: 'gemini-fake-e2e',
