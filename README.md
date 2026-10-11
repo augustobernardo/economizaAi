@@ -48,6 +48,17 @@ documented security) matters as much as the features.
 - **Export** a period as CSV or Markdown (`/exportar`, or "exporta meus
   gastos de agosto").
 - **Summary** by category and **latest expenses** (`/resumo`, `/ultimos`).
+- **Credit and debit cards** with closing and due days (`/cartoes`). A
+  purchase lands on the invoice that matches its date; a card mentioned
+  without credit or debit gets a button question first.
+- **Invoices:** total = initial amount you report + credit purchases +
+  installments - refunds (`/fatura`).
+- **Installments**, including ones already under way ("parcela 8 de 10"),
+  listed with a progress bar (`/parcelamentos`).
+- **Income and monthly balance:** salary, transfers and refunds; the summary
+  shows income, expenses (installments included) and the balance.
+- **Refunds** can be tied to a card and reduce its invoice.
+- **Fix a record** by replying to its message ("na verdade foi 35").
 - **Single-owner bot:** any other user is dropped before reaching the
   business rules.
 
@@ -74,7 +85,7 @@ writing a new class, without touching any use case.
 
 ```
 src/modules/gastos/
-  domain/          Dinheiro, Categoria, Gasto, Periodo, errors and the repository port
+  domain/          Dinheiro, Categoria, Gasto, Cartao, Parcelamento, Entrada, FaturaInformada, Periodo, errors and ports
   application/     use cases + ports (InterpretadorDeMensagem, Exportador, Relogio)
   infrastructure/  TypeORM, Gemini, CSV and Markdown exporters
   presentation/    Telegram (handlers, owner guard, rate limit) and dev HTTP routes
@@ -116,30 +127,93 @@ In Telegram, with the development bot:
 
 ```
 you: ontem 18 num açaí e 120 no mercado
-bot: ✅ 2 gastos registrados!
+bot:  ✅ 2 gastos registrados!
 
-     🍔 Alimentação: R$ 18,00
-          Açaí · Ontem, 04/10
-     🛒 Mercado: R$ 120,00
-          Mercado · Ontem, 04/10
+      🍔 Alimentação: R$ 18,00
+           Açaí · Ontem, 04/10
+      🛒 Mercado: R$ 120,00
+           Mercado · Ontem, 04/10
 
-     💵 Total: R$ 138,00
-     [↩️ Desfazer]
+      💵 Total: R$ 138,00
+      [↩️ Desfazer]
 
 you: /resumo 2026-10
-bot: 📊 Resumo de outubro/2026
-     💵 Total: R$ 138,00 · 2 registros
+bot:  📊 Resumo de outubro/2026
 
-     🛒 Mercado: R$ 120,00 (87%)
-     🍔 Alimentação: R$ 18,00 (13%)
+      💰 Entradas: R$ 0,00 (0)
+      💸 Gastos: R$ 138,00 (2)
+      ⚖️ Saldo: −R$ 138,00
 
-     🏆 Maior gasto: R$ 120,00 · Mercado · 04/10
+      Por categoria (compras)
+      🛒 Mercado: R$ 120,00 (87%)
+      🍔 Alimentação: R$ 18,00 (13%)
+      🏆 Maior gasto: R$ 120,00 · Mercado · 04/10
 ```
 
 Replies use Telegram HTML with one emoji per category; user text is always
 escaped. Commands: `/resumo` (current month, or `/resumo 2026-09`),
 `/exportar`, `/ultimos` and `/ajuda`, also listed in the Telegram menu.
 Natural-language requests ("quanto gastei em setembro?") work too.
+
+Cards, invoices, installments, income and edits (fictional values):
+
+```
+you: /cartoes add Inter 3 10
+bot: 💳 Cartão Inter cadastrado: fecha dia 3, vence dia 10.
+
+you: fatura do Inter de 400 para novembro
+bot: 💳 Fatura Inter nov/2026: valor inicial R$ 400,00
+     Total atual: R$ 400,00 · vence 10/11/2026
+
+you: gastei 30 no crédito do Inter
+bot: ✅ Gasto registrado!
+
+     🛒 Mercado
+     💰 R$ 30,00
+     📝 Supermercado
+     📅 Hoje, 10/10
+     💳 Inter · crédito · fatura nov/2026
+
+you: /fatura Inter
+bot: 💳 Fatura Inter nov/2026 · vence 10/11/2026
+
+     Valor inicial: R$ 400,00
+     Compras (1): R$ 30,00
+     Parcelas (0): R$ 0,00
+     Reembolsos: R$ 0,00
+     Total: R$ 430,00
+
+you: parcelei 1000 no Inter em 10x de 100
+bot: ✅ Parcelamento registrado!
+
+     🧾 Monitor: R$ 1.000,00 em 10× de R$ 100,00
+          Inter crédito · 1ª parcela na fatura de nov/2026, última em ago/2027
+
+you: recebi 4200 de salário
+bot: ✅ Entrada registrada!
+
+     💰 Salário
+     💵 R$ 4.200,00
+     📝 Salário
+     📅 Hoje, 10/10
+
+you: /parcelamentos
+bot: 🧾 Parcelamentos em andamento
+
+     📦 Monitor · Inter
+     ▰▱▱▱▱▱▱▱▱▱ 1 de 10 · faltam 9
+     R$ 100,00 por mês · termina jul/2027
+```
+
+To fix a record, reply to its confirmation with "na verdade foi 35" and the
+bot shows the change to confirm. Other commands: `/cartoes` (list),
+`/cartoes remover <nome>`, `/fatura` (all cards) and
+`/fatura <cartão> <valor> [MM/AAAA]`.
+
+The CSV export has the columns
+`tipo;data;descricao;categoria;valor;origem;cartao;forma`, where `tipo` is
+`gasto`, `parcela` or `entrada` and `valor` is signed (income positive,
+expenses and installments negative), so the sum is the balance.
 
 Outside production, HTTP routes let you test without Telegram:
 
@@ -165,7 +239,7 @@ pnpm lint
 > `pnpm test:ia` calls the real Gemini API and uses quota. It is run by hand
 > and never in CI. The same goes for `pnpm eval:ia`, which scores the
 > extraction prompt against 44 fictional cases in `test/eval/casos.json`
-> (`EVAL_PROMPT=v1..v5`, `EVAL_CONJUNTO=treino|holdout|todos`; add
+> (`EVAL_PROMPT=v1..v6`, `EVAL_CONJUNTO=treino|holdout|todos`; add
 > `--reporter=default` to see the report).
 
 ## Development workflow

@@ -42,6 +42,17 @@ segurança documentada) importa tanto quanto a funcionalidade.
 - **Exportação** de um período em CSV ou Markdown (`/exportar` ou "exporta
   meus gastos de agosto").
 - **Resumo** por categoria e **últimos gastos** (`/resumo`, `/ultimos`).
+- **Cartões de crédito e débito** com dia de fechamento e de vencimento
+  (`/cartoes`). A compra cai na fatura certa pela data; cartão citado sem
+  crédito ou débito gera uma pergunta com botões.
+- **Faturas:** total = valor inicial informado + compras no crédito +
+  parcelas - reembolsos (`/fatura`).
+- **Parcelamentos**, inclusive já em andamento ("parcela 8 de 10"), listados
+  com barra de progresso (`/parcelamentos`).
+- **Entradas e saldo do mês:** salário, transferências e reembolsos; o
+  resumo mostra entradas, gastos (com as parcelas) e saldo.
+- **Reembolso** pode ser ligado a um cartão e abate a fatura dele.
+- **Corrigir um registro** respondendo à mensagem dele ("na verdade foi 35").
 - **Bot de um único dono:** qualquer outro usuário é ignorado antes de
   chegar à regra de negócio.
 
@@ -68,7 +79,7 @@ escrever uma classe nova, sem mexer em caso de uso.
 
 ```
 src/modules/gastos/
-  domain/          Dinheiro, Categoria, Gasto, Periodo, erros e o port do repositório
+  domain/          Dinheiro, Categoria, Gasto, Cartao, Parcelamento, Entrada, FaturaInformada, Periodo, erros e ports
   application/     casos de uso + ports (InterpretadorDeMensagem, Exportador, Relogio)
   infrastructure/  TypeORM, Gemini, exportadores CSV e Markdown
   presentation/    Telegram (handlers, owner guard, rate limit) e HTTP de dev
@@ -122,11 +133,14 @@ bot:  ✅ 2 gastos registrados!
 
 você: /resumo 2026-10
 bot:  📊 Resumo de outubro/2026
-      💵 Total: R$ 138,00 · 2 registros
 
+      💰 Entradas: R$ 0,00 (0)
+      💸 Gastos: R$ 138,00 (2)
+      ⚖️ Saldo: −R$ 138,00
+
+      Por categoria (compras)
       🛒 Mercado: R$ 120,00 (87%)
       🍔 Alimentação: R$ 18,00 (13%)
-
       🏆 Maior gasto: R$ 120,00 · Mercado · 04/10
 ```
 
@@ -135,6 +149,66 @@ usuário é sempre escapado. Comandos: `/resumo` (mês atual, ou
 `/resumo 2026-09`), `/exportar`, `/ultimos` e `/ajuda`, também no menu do
 Telegram. Pedidos em linguagem natural ("quanto gastei em setembro?") também
 funcionam.
+
+Cartões, faturas, parcelamentos, entradas e correções (valores fictícios):
+
+```
+you: /cartoes add Inter 3 10
+bot: 💳 Cartão Inter cadastrado: fecha dia 3, vence dia 10.
+
+you: fatura do Inter de 400 para novembro
+bot: 💳 Fatura Inter nov/2026: valor inicial R$ 400,00
+     Total atual: R$ 400,00 · vence 10/11/2026
+
+you: gastei 30 no crédito do Inter
+bot: ✅ Gasto registrado!
+
+     🛒 Mercado
+     💰 R$ 30,00
+     📝 Supermercado
+     📅 Hoje, 10/10
+     💳 Inter · crédito · fatura nov/2026
+
+you: /fatura Inter
+bot: 💳 Fatura Inter nov/2026 · vence 10/11/2026
+
+     Valor inicial: R$ 400,00
+     Compras (1): R$ 30,00
+     Parcelas (0): R$ 0,00
+     Reembolsos: R$ 0,00
+     Total: R$ 430,00
+
+you: parcelei 1000 no Inter em 10x de 100
+bot: ✅ Parcelamento registrado!
+
+     🧾 Monitor: R$ 1.000,00 em 10× de R$ 100,00
+          Inter crédito · 1ª parcela na fatura de nov/2026, última em ago/2027
+
+you: recebi 4200 de salário
+bot: ✅ Entrada registrada!
+
+     💰 Salário
+     💵 R$ 4.200,00
+     📝 Salário
+     📅 Hoje, 10/10
+
+you: /parcelamentos
+bot: 🧾 Parcelamentos em andamento
+
+     📦 Monitor · Inter
+     ▰▱▱▱▱▱▱▱▱▱ 1 de 10 · faltam 9
+     R$ 100,00 por mês · termina jul/2027
+```
+
+Para corrigir um registro, responda à confirmação dele com "na verdade foi
+35" e o bot mostra a mudança para você confirmar. Outros comandos: `/cartoes`
+(lista), `/cartoes remover <nome>`, `/fatura` (todos os cartões) e
+`/fatura <cartão> <valor> [MM/AAAA]`.
+
+O CSV exportado tem as colunas
+`tipo;data;descricao;categoria;valor;origem;cartao;forma`, em que `tipo` é
+`gasto`, `parcela` ou `entrada` e `valor` tem sinal (entrada positiva, gasto e
+parcela negativos), então a soma é o saldo.
 
 Fora de produção há rotas HTTP para validar sem o Telegram:
 
@@ -160,7 +234,7 @@ pnpm lint
 > `pnpm test:ia` chama o Gemini de verdade e gasta cota. Ele é manual e não
 > roda no CI. O mesmo vale para o `pnpm eval:ia`, que mede o prompt de
 > extração em 44 casos fictícios de `test/eval/casos.json`
-> (`EVAL_PROMPT=v1..v5`, `EVAL_CONJUNTO=treino|holdout|todos`; use
+> (`EVAL_PROMPT=v1..v6`, `EVAL_CONJUNTO=treino|holdout|todos`; use
 > `--reporter=default` para ver o relatório).
 
 ## Fluxo de desenvolvimento
