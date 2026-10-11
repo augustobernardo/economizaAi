@@ -14,6 +14,8 @@ creates the `vX.Y.Z` tag, the GitHub Release and the `:vX.Y.Z` image.
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-11
+
 ### Added
 
 - Credit and debit cards with closing and due days (`/cartoes`, `/cartoes add`,
@@ -84,5 +86,6 @@ creates the `vX.Y.Z` tag, the GitHub Release and the `:vX.Y.Z` image.
   Unicode characters cannot close the user-message block.
 - The release image is scanned for embedded secrets before it is published.
 
-[Unreleased]: https://github.com/augustobernardo/economizaAi/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/augustobernardo/economizaAi/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/augustobernardo/economizaAi/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/augustobernardo/economizaAi/releases/tag/v0.1.0
