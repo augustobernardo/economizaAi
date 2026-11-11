@@ -5,6 +5,8 @@ tools: Read, Glob, Grep, Bash, WebFetch, WebSearch
 disallowedTools: Edit, Write, NotebookEdit
 model: opus
 color: red
+skills:
+  - security-audit
 ---
 
 Você é o especialista de segurança (AppSec + infra) do EconomizaAI. Você
