@@ -14,6 +14,17 @@ creates the `vX.Y.Z` tag, the GitHub Release and the `:vX.Y.Z` image.
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-11-10
+
+### Security
+
+- Updated dependencies to clear `pnpm audit` advisories, including four high
+  ones (vite, zod, body-parser, multer). No new or removed dependencies.
+- Bumped the pinned `node:24-alpine` base image to a digest with patched
+  musl and zlib. Trivy reports no high or critical findings on the image.
+- The local development database in `docker-compose.yml` now listens on
+  `127.0.0.1` only.
+
 ## [0.2.0] - 2026-10-11
 
 ### Added
