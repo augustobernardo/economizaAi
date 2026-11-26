@@ -100,7 +100,7 @@ jobs:
 
       - name: Escaneia a imagem (trivy, CRITICAL com correção)
         run: |
-          img=$(sed -n 's/^FROM //p' .github/tools/trivy/Dockerfile)
+          img=$(sed -n 's/^FROM //p' tools/ci/trivy/Dockerfile)
           docker save "economizaai:ci" -o "$RUNNER_TEMP/image.tar"
           docker run --rm -v "$RUNNER_TEMP/image.tar:/in/image.tar:ro" "$img" \
             image --input /in/image.tar --severity CRITICAL --ignore-unfixed --exit-code 1 --no-progress
@@ -119,7 +119,7 @@ jobs:
 
       - name: Escaneia segredos no histórico
         run: |
-          img=$(sed -n 's/^FROM //p' .github/tools/gitleaks/Dockerfile)
+          img=$(sed -n 's/^FROM //p' tools/ci/gitleaks/Dockerfile)
           docker run --rm -v "$PWD:/repo" "$img" \
             git --redact --verbose /repo
 
@@ -157,7 +157,7 @@ jobs:
 
       - name: Escaneia a imagem (trivy, CRITICAL com correção e segredos)
         run: |
-          img=$(sed -n 's/^FROM //p' .github/tools/trivy/Dockerfile)
+          img=$(sed -n 's/^FROM //p' tools/ci/trivy/Dockerfile)
           docker save "${IMAGE}:${GITHUB_SHA}" -o "$RUNNER_TEMP/image.tar"
           docker run --rm -v "$RUNNER_TEMP/image.tar:/in/image.tar:ro" "$img" \
             image --input /in/image.tar --severity CRITICAL --ignore-unfixed --exit-code 1 --no-progress

@@ -13,7 +13,8 @@ updates:
       interval: 'weekly'
 
   - package-ecosystem: 'docker'
-    directories: ['/', '/.github/tools/*']
+    # Scanner images live outside .github/: Dependabot cannot open PRs that change files there.
+    directories: ['/', '/tools/ci/*']
     target-branch: 'develop'
     schedule:
       interval: 'weekly'
